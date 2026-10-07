@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:api": "node --watch --env-file-if-exists=.env server/index.ts",
     "start": "node server/index.ts",
+    "user:create": "node --env-file-if-exists=.env server/create-user.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",

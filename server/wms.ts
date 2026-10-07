@@ -7,6 +7,7 @@
 
 import type pg from "pg";
 import { pool, transaction } from "./db.ts";
+import { ApiError } from "./errors.ts";
 
 const TYPE = "wms";
 
@@ -24,15 +25,6 @@ export interface WmsConfigSummary {
 
 export interface WmsConfig extends WmsConfigSummary {
   item: JsonObject;
-}
-
-/** Thrown for problems the client can fix; `status` is the HTTP status to send. */
-export class ApiError extends Error {
-  status: 400 | 404 | 409;
-  constructor(status: 400 | 404 | 409, message: string) {
-    super(message);
-    this.status = status;
-  }
 }
 
 interface MemberRow {

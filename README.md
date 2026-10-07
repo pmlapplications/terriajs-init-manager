@@ -17,6 +17,7 @@ npm install              # install dependencies
 npm run dev              # start dev server at http://localhost:5173 (proxies /api)
 npm run dev:api          # start the API server at http://localhost:3000 (reads .env)
 npm start                # run the API server without watching
+npm run user:create      # create a user from the command line (reads .env)
 npm run build            # type-check and build to dist/
 npm run preview          # serve the production build
 npm run lint             # lint
@@ -65,18 +66,45 @@ DB_VOLUME=tlm-db-scratch docker compose up -d db   # use or create another datas
 docker compose down -v                             # delete the current dataset to start fresh
 ```
 
+### Users and login
+
+Every page and every API route except login and `/api/health` needs a logged-in user. Users have
+an email, first and last name and password; any logged-in user can add or delete users on the
+**Users** page (but not delete themselves). Passwords are hashed with scrypt, and sessions last
+12 hours in an HttpOnly cookie.
+
+Create the first user from the command line:
+
+```bash
+npm run user:create                                   # against DATABASE_URL
+docker compose exec app node server/create-user.ts    # inside the Docker stack
+```
+
+Migrations only run automatically on an empty volume. To add `003_users.sql` to an existing
+database:
+
+```bash
+docker compose exec -T db psql -U terria -d terria < db/migrations/003_users.sql
+```
+
 ### API
 
 `server/` is a small [Hono](https://hono.dev) server, run directly by Node's TypeScript support.
-In production (`NODE_ENV=production`) it also serves `dist/`.
+In production (`NODE_ENV=production`) it also serves `dist/`.w
 
 | Method | Path | |
 |---|---|---|
+| `POST` | `/api/auth/login` | Log in with `{ "email", "password" }`; sets the session cookie. |
+| `POST` | `/api/auth/logout` | End the session. |
+| `GET` | `/api/auth/me` | The logged-in user. |
+| `GET` | `/api/users` | List users. |
+| `POST` | `/api/users` | Create a user: `{ "email", "firstName", "lastName", "password" }`. |
+| `DELETE` | `/api/users/:id` | Delete a user and end their sessions. |
 | `GET` | `/api/wms` | List saved WMS configs (no item bodies). |
 | `GET` | `/api/wms/:id` | Load one config; `item` is the catalog JSON without `type`. |
 | `POST` | `/api/wms` | Create a config from a catalog item. |
 | `PUT` | `/api/wms/:id` | Update a config. Body `{ "version", "item" }`; returns 409 if `version` is stale. |
 
 Items are stored as `catalog_member` rows: `id`, `name`, `description` and `url` go to columns,
-`shareKeys` to `catalog_member_share_key`, and every other trait to `traits`. An optional
-`X-User` header is recorded in `created_by`/`updated_by`. `src/api.ts` is the frontend client.
+`shareKeys` to `catalog_member_share_key`, and every other trait to `traits`. The logged-in
+user's email is recorded in `created_by`/`updated_by`. `src/api.ts` is the frontend client.

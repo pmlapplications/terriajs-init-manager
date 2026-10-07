@@ -699,3 +699,126 @@ fieldset.field > legend + * {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --- Pages, login and users --------------------------------------------- */
+
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  padding: 6px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.page-nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.page-nav a:hover,
+.page-nav a[aria-current="page"] {
+  color: var(--text);
+}
+
+.page-nav a[aria-current="page"] {
+  font-weight: 600;
+}
+
+.whoami {
+  margin-left: auto;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.page-message {
+  padding: 16px;
+}
+
+.page {
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.login-card {
+  display: grid;
+  gap: 12px;
+  width: min(360px, 100%);
+  padding: 20px;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.login-card .hint {
+  margin: 0;
+}
+
+.form-row {
+  display: grid;
+  gap: 4px;
+}
+
+.form-row > span {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.user-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.user-form .wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.table th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.btn.danger {
+  color: var(--error);
+}
+
+.btn.danger:hover:not(:disabled) {
+  border-color: var(--error);
+}

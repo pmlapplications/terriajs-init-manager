@@ -1,22 +1,42 @@
 // API server. In production it also serves the built frontend from dist/.
 //
-//   GET  /api/wms        list stored WMS configs
-//   GET  /api/wms/:id    load one config
-//   POST /api/wms        create a config from an item
-//   PUT  /api/wms/:id    update a config; body { version, item }
+// Every /api route except login and health needs a session cookie.
+//
+//   POST   /api/auth/login   body { email, password }; sets the session cookie
+//   POST   /api/auth/logout  ends the session
+//   GET    /api/auth/me      the logged-in user
+//
+//   GET    /api/users        list users
+//   POST   /api/users        create a user; body { email, firstName, lastName, password }
+//   DELETE /api/users/:id    delete a user (not yourself)
+//
+//   GET    /api/wms          list stored WMS configs
+//   GET    /api/wms/:id      load one config
+//   POST   /api/wms          create a config from an item
+//   PUT    /api/wms/:id      update a config; body { version, item }
 
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { PG_CHECK_VIOLATION, PG_UNIQUE_VIOLATION, pgErrorCode, pool } from "./db.ts";
-import { ApiError, createWmsConfig, getWmsConfig, listWmsConfigs, updateWmsConfig } from "./wms.ts";
+import { ApiError } from "./errors.ts";
+import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseNewUser, sessionUser, type User } from "./users.ts";
+import { createWmsConfig, getWmsConfig, listWmsConfigs, updateWmsConfig } from "./wms.ts";
 
-const app = new Hono();
+const app = new Hono<{ Variables: { user: User } }>();
 
-// No auth yet; callers may say who they are so it lands in the audit columns.
-const userOf = (c: Context) => c.req.header("x-user") ?? null;
+const SESSION_COOKIE = "tlm_session";
+// Browsers accept Secure cookies on http://localhost, so this only needs
+// turning off when serving production over plain http to another host.
+const secureCookie = (process.env.COOKIE_SECURE ?? String(process.env.NODE_ENV === "production")) === "true";
 
+// Requiring a JSON content type means a cross-site form can't post here; other
+// sites can't send JSON without a CORS preflight, which we never allow.
 async function jsonBody(c: Context): Promise<unknown> {
+  if (!c.req.header("content-type")?.startsWith("application/json")) {
+    throw new ApiError(400, "Content-Type must be application/json");
+  }
   try {
     return await c.req.json();
   } catch {
@@ -29,17 +49,55 @@ app.get("/api/health", async (c) => {
   return c.json({ ok: true });
 });
 
+app.post("/api/auth/login", async (c) => {
+  const { email, password } = ((await jsonBody(c)) ?? {}) as { email?: unknown; password?: unknown };
+  const { token, user } = await login(email, password);
+  setCookie(c, SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: secureCookie,
+    sameSite: "Strict",
+    path: "/",
+    maxAge: SESSION_HOURS * 3600,
+  });
+  return c.json(user);
+});
+
+app.post("/api/auth/logout", async (c) => {
+  await logout(getCookie(c, SESSION_COOKIE));
+  deleteCookie(c, SESSION_COOKIE, { path: "/" });
+  return c.body(null, 204);
+});
+
+// Everything below needs a logged-in user.
+app.use("/api/*", async (c, next) => {
+  const user = await sessionUser(getCookie(c, SESSION_COOKIE));
+  if (!user) throw new ApiError(401, "Not logged in");
+  c.set("user", user);
+  await next();
+});
+
+app.get("/api/auth/me", (c) => c.json(c.var.user));
+
+app.get("/api/users", async (c) => c.json(await listUsers()));
+
+app.post("/api/users", async (c) => c.json(await createUser(parseNewUser(await jsonBody(c)), c.var.user.email), 201));
+
+app.delete("/api/users/:id", async (c) => {
+  await deleteUser(c.req.param("id"), c.var.user.id);
+  return c.body(null, 204);
+});
+
 app.get("/api/wms", async (c) => c.json(await listWmsConfigs()));
 
 app.get("/api/wms/:id", async (c) => c.json(await getWmsConfig(c.req.param("id"))));
 
-app.post("/api/wms", async (c) => c.json(await createWmsConfig(await jsonBody(c), userOf(c)), 201));
+app.post("/api/wms", async (c) => c.json(await createWmsConfig(await jsonBody(c), c.var.user.email), 201));
 
 app.put("/api/wms/:id", async (c) => {
   const body = await jsonBody(c);
   const { version, item } = (body ?? {}) as { version?: unknown; item?: unknown };
   if (!Number.isInteger(version)) throw new ApiError(400, `"version" must be an integer`);
-  return c.json(await updateWmsConfig(c.req.param("id"), version as number, item, userOf(c)));
+  return c.json(await updateWmsConfig(c.req.param("id"), version as number, item, c.var.user.email));
 });
 
 app.notFound((c) => (c.req.path.startsWith("/api/") ? c.json({ error: "Not found" }, 404) : c.text("Not found", 404)));
@@ -55,6 +113,8 @@ app.onError((e, c) => {
   return c.json({ error: "Internal server error" }, 500);
 });
 
+// The frontend itself is public; it shows the login form until /api/auth/me
+// succeeds, and all data comes from the API above.
 if (process.env.NODE_ENV === "production") {
   app.use("/*", serveStatic({ root: "./dist" }));
   app.get("*", serveStatic({ path: "./dist/index.html" }));
