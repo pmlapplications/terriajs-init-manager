@@ -6,7 +6,7 @@
 // but accepts any text.
 
 import generated from "./generated/wms-traits.json";
-import type { TraitDef, TraitsFile } from "./traits";
+import { isPlainObject, traitKind, type JsonObject, type TraitDef, type TraitsFile } from "./traits";
 
 export const wmsTraits = generated as TraitsFile;
 
@@ -332,4 +332,38 @@ export const totalTraitCount = ENTRY_TRAITS.length + Object.values(wmsTraits.cla
 
 export function classTraits(className: string): TraitDef[] {
   return className === ROOT_CLASS ? rootTraits : (wmsTraits.classes[className] ?? []);
+}
+
+const ROOT_ORDER = sections.flatMap((s) => s.traits);
+
+/**
+ * Reorder keys to match the form: section order at the root, docs order inside
+ * nested traits. Keys the form doesn't know keep their relative order at the end.
+ */
+export function orderLikeForm(item: JsonObject): JsonObject {
+  return orderObject(item, ROOT_CLASS);
+}
+
+function orderObject(obj: JsonObject, className: string): JsonObject {
+  const traits = classTraits(className);
+  const names = className === ROOT_CLASS ? ROOT_ORDER : traits.map((t) => t.name);
+  const types = new Map(traits.map((t) => [t.name, t.type]));
+  const out: JsonObject = {};
+  for (const name of names) {
+    if (Object.hasOwn(obj, name)) out[name] = orderChild(obj[name], types.get(name));
+  }
+  for (const [key, value] of Object.entries(obj)) {
+    if (!Object.hasOwn(out, key)) out[key] = value;
+  }
+  return out;
+}
+
+function orderChild(value: unknown, type: string | undefined): unknown {
+  if (type === undefined) return value;
+  const kind = traitKind(type);
+  if (kind.kind === "object" && isPlainObject(value)) return orderObject(value, kind.className);
+  if (kind.kind === "objectArray" && Array.isArray(value)) {
+    return value.map((v) => (isPlainObject(v) ? orderObject(v, kind.className) : v));
+  }
+  return value;
 }

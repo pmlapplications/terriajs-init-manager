@@ -7,7 +7,7 @@ import { CapabilitiesPanel } from "./form/wmsInputs";
 import type { Capabilities } from "./terria/capabilities";
 import { isPlainObject, setIn, type JsonObject, type Path } from "./terria/traits";
 import { validateItem, type Issue } from "./terria/validate";
-import { ROOT_CLASS, rootTraits, sections, totalTraitCount, wmsTraits } from "./terria/wms-ui";
+import { orderLikeForm, ROOT_CLASS, rootTraits, sections, totalTraitCount, wmsTraits } from "./terria/wms-ui";
 import "./App.css";
 
 const STORAGE_KEY = "tlm.wms.draft";
@@ -34,7 +34,7 @@ function store(key: string, value: unknown) {
   }
 }
 
-const loadDraft = () => loadStored<JsonObject>(STORAGE_KEY, isPlainObject, {});
+const loadDraft = () => orderLikeForm(loadStored<JsonObject>(STORAGE_KEY, isPlainObject, {}));
 const loadRecord = () =>
   loadStored<SavedRecord | null>(
     RECORD_KEY,
@@ -65,7 +65,7 @@ export default function App() {
   useEffect(() => store(RECORD_KEY, record), [record]);
 
   const update = useCallback((path: Path, value: unknown) => {
-    setItem((prev) => (setIn(prev, path, value) as JsonObject | undefined) ?? {});
+    setItem((prev) => orderLikeForm((setIn(prev, path, value) as JsonObject | undefined) ?? {}));
   }, []);
 
   const setDraftError = useCallback((path: string, message: string | null) => {
@@ -150,7 +150,7 @@ export default function App() {
   };
 
   const replaceItem = (next: JsonObject, nextRecord: SavedRecord | null) => {
-    setItem(next);
+    setItem(orderLikeForm(next));
     setRecord(nextRecord);
     setDraftErrors({});
     setCapabilities(null);
