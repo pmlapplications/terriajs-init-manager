@@ -1,0 +1,158 @@
+[
+  {
+    "type": "api-table",
+    "model": "ApiTableCatalogItem"
+  },
+  {
+    "type": "esri-featureServer",
+    "model": "ArcGisFeatureServerCatalogItem"
+  },
+  {
+    "type": "esri-imageServer",
+    "model": "ArcGisImageServerCatalogItem"
+  },
+  {
+    "type": "esri-mapServer",
+    "model": "ArcGisMapServerCatalogItem"
+  },
+  {
+    "type": "arcgis-terrain",
+    "model": "ArcGisTerrainCatalogItem"
+  },
+  {
+    "type": "assimp",
+    "model": "AssImpCatalogItem"
+  },
+  {
+    "type": "bing-maps",
+    "model": "BingMapsCatalogItem"
+  },
+  {
+    "type": "carto",
+    "model": "CartoMapV1CatalogItem"
+  },
+  {
+    "type": "carto-v3",
+    "model": "CartoMapV3CatalogItem"
+  },
+  {
+    "type": "3d-tiles",
+    "model": "Cesium3DTilesCatalogItem"
+  },
+  {
+    "type": "cesium-terrain",
+    "model": "CesiumTerrainCatalogItem"
+  },
+  {
+    "type": "cog",
+    "model": "CogCatalogItem"
+  },
+  {
+    "type": "composite",
+    "model": "CompositeCatalogItem"
+  },
+  {
+    "type": "csv",
+    "model": "CsvCatalogItem"
+  },
+  {
+    "type": "czml",
+    "model": "CzmlCatalogItem"
+  },
+  {
+    "type": "geojson",
+    "model": "GeoJsonCatalogItem"
+  },
+  {
+    "type": "georss",
+    "model": "GeoRssCatalogItem"
+  },
+  {
+    "type": "gltf",
+    "model": "GltfCatalogItem"
+  },
+  {
+    "type": "gpx",
+    "model": "GpxCatalogItem"
+  },
+  {
+    "type": "gtfs",
+    "model": "GtfsCatalogItem"
+  },
+  {
+    "type": "i3s",
+    "model": "I3SCatalogItem"
+  },
+  {
+    "type": "ion-imagery",
+    "model": "IonImageryCatalogItem"
+  },
+  {
+    "type": "kml",
+    "model": "KmlCatalogItem"
+  },
+  {
+    "type": "mapbox-map",
+    "model": "MapboxMapCatalogItem"
+  },
+  {
+    "type": "mapbox-style",
+    "model": "MapboxStyleCatalogItem"
+  },
+  {
+    "type": "mvt",
+    "model": "MapboxVectorTileCatalogItem"
+  },
+  {
+    "type": "opendatasoft-item",
+    "model": "OpenDataSoftCatalogItem"
+  },
+  {
+    "type": "open-street-map",
+    "model": "OpenStreetMapCatalogItem"
+  },
+  {
+    "type": "sdmx-json",
+    "model": "SdmxJsonCatalogItem"
+  },
+  {
+    "type": "senaps-locations",
+    "model": "SenapsLocationsCatalogItem"
+  },
+  {
+    "type": "sos",
+    "model": "SensorObservationServiceCatalogItem"
+  },
+  {
+    "type": "shp",
+    "model": "ShapefileCatalogItem"
+  },
+  {
+    "type": "socrata-map-item",
+    "model": "SocrataMapViewCatalogItem"
+  },
+  {
+    "type": "stub",
+    "model": "StubCatalogItem"
+  },
+  {
+    "type": "tms",
+    "model": "TileMapServiceCatalogItem"
+  },
+  {
+    "type": "url-template-imagery",
+    "model": "UrlTemplateImageryCatalogItem"
+  },
+  {
+    "type": "wfs",
+    "model": "WebFeatureServiceCatalogItem"
+  },
+  {
+    "type": "wms",
+    "model": "WebMapServiceCatalogItem"
+  },
+  {
+    "type": "wmts",
+    "model": "WebMapTileServiceCatalogItem"
+  }
+]

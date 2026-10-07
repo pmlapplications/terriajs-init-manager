@@ -1,4 +1,4 @@
-import { classTraits, DURATION_RE, ROOT_CLASS, specFor, type FieldSpec, type Widget } from "./wms-ui";
+import { DURATION_RE, type CatalogModel, type FieldSpec, type Widget } from "./catalog-ui";
 import { isPlainObject, pathKey, traitKind, type JsonObject, type Path, type TraitDef } from "./traits";
 
 export interface Issue {
@@ -55,7 +55,7 @@ export function checkNumber(value: number, spec: FieldSpec): string | null {
   return null;
 }
 
-function validateValue(value: unknown, trait: TraitDef, spec: FieldSpec, path: Path, out: Issue[]) {
+function validateValue(model: CatalogModel, value: unknown, trait: TraitDef, spec: FieldSpec, path: Path, out: Issue[]) {
   const key = pathKey(path);
   const err = (message: string, level: Issue["level"] = "error") => out.push({ path: key, level, message });
   const kind = traitKind(trait.type);
@@ -97,21 +97,23 @@ function validateValue(value: unknown, trait: TraitDef, spec: FieldSpec, path: P
       return;
     case "object":
       if (!isPlainObject(value)) return err(`Expected an object, got ${typeName(value)}`);
-      return validateObject(value, kind.className, path, out);
+      return validateObject(model, value, kind.className, path, out);
     case "objectArray":
       if (!Array.isArray(value)) return err(`Expected a list, got ${typeName(value)}`);
       value.forEach((v, i) => {
         if (!isPlainObject(v)) out.push({ path: pathKey([...path, i]), level: "error", message: "Expected an object" });
-        else validateObject(v, kind.className, [...path, i], out);
+        else validateObject(model, v, kind.className, [...path, i], out);
       });
   }
 }
 
-function validateObject(obj: JsonObject, className: string, path: Path, out: Issue[]) {
-  const traits = classTraits(className);
+function validateObject(model: CatalogModel, obj: JsonObject, className: string, path: Path, out: Issue[]) {
+  const traits = model.classTraits(className);
   for (const [key, value] of Object.entries(obj)) {
-    if (className === ROOT_CLASS && key === "type") {
-      if (value !== "wms") out.push({ path: key, level: "error", message: `type must be "wms", got ${JSON.stringify(value)}` });
+    if (className === model.rootClass && key === "type") {
+      if (value !== model.type) {
+        out.push({ path: key, level: "error", message: `type must be "${model.type}", got ${JSON.stringify(value)}` });
+      }
       continue;
     }
     const trait = traits.find((t) => t.name === key);
@@ -120,11 +122,11 @@ function validateObject(obj: JsonObject, className: string, path: Path, out: Iss
       continue;
     }
     if (value === null) continue; // Terria uses null to clear a value from a lower stratum.
-    validateValue(value, trait, specFor(className, trait), [...path, key], out);
+    validateValue(model, value, trait, model.specFor(className, trait), [...path, key], out);
   }
   for (const trait of traits) {
     const v = obj[trait.name];
-    if (specFor(className, trait).required && (v === undefined || v === "")) {
+    if (model.specFor(className, trait).required && (v === undefined || v === "")) {
       out.push({ path: pathKey([...path, trait.name]), level: "error", message: "Required" });
     }
   }
@@ -143,7 +145,7 @@ const str = (v: unknown) => (typeof v === "string" && v !== "" ? v : undefined);
 const csv = (v: unknown) => (typeof v === "string" ? v.split(",").map((s) => s.trim()) : []);
 
 /** Rules spanning more than one trait. */
-function crossChecks(item: JsonObject, out: Issue[]) {
+function crossChecks(type: string, item: JsonObject, out: Issue[]) {
   const ordered = (lo: string, hi: string, loV: number | undefined, hiV: number | undefined, label: string) => {
     if (loV !== undefined && hiV !== undefined && loV > hiV) {
       out.push({ path: lo, level: "error", message: `${label}: ${lo} (${loV}) is greater than ${hi} (${hiV})` });
@@ -159,11 +161,13 @@ function crossChecks(item: JsonObject, out: Issue[]) {
     out.push({ path: "startTime", level: "error", message: "startTime is after stopTime" });
   }
 
-  if (!str(item.layers)) {
-    out.push({ path: "layers", level: "warning", message: "No layers set; Terria will try to choose from GetCapabilities" });
-  }
-  if (str(item.styles) && str(item.layers) && csv(item.styles).length !== csv(item.layers).length) {
-    out.push({ path: "styles", level: "warning", message: "Number of styles should match the number of layers" });
+  if (type === "wms") {
+    if (!str(item.layers)) {
+      out.push({ path: "layers", level: "warning", message: "No layers set; Terria will try to choose from GetCapabilities" });
+    }
+    if (str(item.styles) && str(item.layers) && csv(item.styles).length !== csv(item.layers).length) {
+      out.push({ path: "styles", level: "warning", message: "Number of styles should match the number of layers" });
+    }
   }
 
   if (isPlainObject(item.rectangle)) {
@@ -196,9 +200,9 @@ function crossChecks(item: JsonObject, out: Issue[]) {
   }
 }
 
-export function validateItem(item: JsonObject): Issue[] {
+export function validateItem(model: CatalogModel, item: JsonObject): Issue[] {
   const out: Issue[] = [];
-  validateObject(item, ROOT_CLASS, [], out);
-  crossChecks(item, out);
+  validateObject(model, item, model.rootClass, [], out);
+  crossChecks(model.type, item, out);
   return out;
 }

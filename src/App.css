@@ -727,6 +727,82 @@ fieldset.field > legend + * {
   font-weight: 600;
 }
 
+.nav-menu {
+  position: relative;
+}
+
+.nav-menu-button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-menu-button:hover,
+.nav-menu-button[aria-expanded="true"] {
+  color: var(--accent);
+}
+
+/* Above the sticky top bar. */
+.nav-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.nav-menu-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-menu-list button:hover,
+.nav-menu-list button:focus-visible {
+  background: var(--accent-soft);
+}
+
+.nav-menu-list span {
+  overflow-wrap: anywhere;
+}
+
+.nav-menu-list code {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .nav-menu-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .whoami {
   margin-left: auto;
   color: var(--muted);

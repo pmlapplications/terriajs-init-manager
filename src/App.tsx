@@ -1,53 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listWmsConfigs, loadWmsConfig, saveWmsConfig, type WmsConfig, type WmsConfigSummary } from "./api";
+import { listItemConfigs, loadItemConfig, saveItemConfig, type ItemConfig, type ItemConfigSummary } from "./api";
 import { EditorContext, type EditorContextValue } from "./form/context";
 import { fieldId, traitMatches } from "./form/paths";
 import { TraitField } from "./form/TraitField";
 import { CapabilitiesPanel } from "./form/wmsInputs";
 import type { Capabilities } from "./terria/capabilities";
 import { isPlainObject, setIn, type JsonObject, type Path } from "./terria/traits";
+import { loadDraft, loadRecord, saveDraft, saveRecord, type SavedRecord } from "./drafts";
 import { validateItem, type Issue } from "./terria/validate";
-import { orderLikeForm, ROOT_CLASS, rootTraits, sections, totalTraitCount, wmsTraits } from "./terria/wms-ui";
+import { orderLikeForm, type CatalogModel } from "./terria/catalog-ui";
 import "./App.css";
 
-const STORAGE_KEY = "tlm.wms.draft";
-const RECORD_KEY = "tlm.wms.record";
-
-/** The database config the draft was loaded from or last saved to. */
-type SavedRecord = Pick<WmsConfig, "id" | "version" | "name">;
-
-function loadStored<T>(key: string, accept: (v: unknown) => v is T, fallback: T): T {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
-    return accept(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function store(key: string, value: unknown) {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Storage unavailable (private mode etc.); the draft just won't persist.
-  }
-}
-
-const loadDraft = () => orderLikeForm(loadStored<JsonObject>(STORAGE_KEY, isPlainObject, {}));
-const loadRecord = () =>
-  loadStored<SavedRecord | null>(
-    RECORD_KEY,
-    (v): v is SavedRecord => isPlainObject(v) && typeof v.id === "string" && typeof v.version === "number",
-    null,
-  );
-
-const toTerriaJson = (item: JsonObject) => ({ type: "wms", ...item });
-
-const sectionOf = (rootKey: string) => sections.find((s) => s.traits.includes(rootKey))?.id ?? "other";
-
-export default function App() {
-  const [item, setItem] = useState<JsonObject>(loadDraft);
+/** Editor for one catalog item type. Remount (change `key`) to switch type or reload the draft. */
+export default function App({ model }: { model: CatalogModel }) {
+  const { sections, rootTraits } = model;
+  const [item, setItem] = useState<JsonObject>(() => orderLikeForm(model, loadDraft(model.type)));
   const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [active, setActive] = useState(sections[0].id);
@@ -56,17 +23,20 @@ export default function App() {
   const [showIssues, setShowIssues] = useState(false);
   const [importing, setImporting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [record, setRecord] = useState<SavedRecord | null>(loadRecord);
+  const [record, setRecord] = useState<SavedRecord | null>(() => loadRecord(model.type));
   const [opening, setOpening] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ level: "ok" | "error"; text: string } | null>(null);
 
-  useEffect(() => store(STORAGE_KEY, item), [item]);
-  useEffect(() => store(RECORD_KEY, record), [record]);
+  useEffect(() => saveDraft(model.type, item), [model.type, item]);
+  useEffect(() => saveRecord(model.type, record), [model.type, record]);
 
-  const update = useCallback((path: Path, value: unknown) => {
-    setItem((prev) => orderLikeForm((setIn(prev, path, value) as JsonObject | undefined) ?? {}));
-  }, []);
+  const update = useCallback(
+    (path: Path, value: unknown) => {
+      setItem((prev) => orderLikeForm(model, (setIn(prev, path, value) as JsonObject | undefined) ?? {}));
+    },
+    [model],
+  );
 
   const setDraftError = useCallback((path: string, message: string | null) => {
     setDraftErrors((prev) => {
@@ -81,9 +51,9 @@ export default function App() {
   const issues = useMemo<Issue[]>(
     () => [
       ...Object.entries(draftErrors).map(([path, message]) => ({ path, level: "error" as const, message })),
-      ...validateItem(item),
+      ...validateItem(model, item),
     ],
-    [item, draftErrors],
+    [model, item, draftErrors],
   );
 
   const byPath = useMemo(() => {
@@ -97,6 +67,7 @@ export default function App() {
 
   const ctx: EditorContextValue = useMemo(
     () => ({
+      model,
       item,
       update,
       issuesAt: (p) => byPath.get(p) ?? [],
@@ -106,10 +77,10 @@ export default function App() {
       filter: filter.trim(),
       onlySet,
     }),
-    [item, update, byPath, issues, setDraftError, capabilities, filter, onlySet],
+    [model, item, update, byPath, issues, setDraftError, capabilities, filter, onlySet],
   );
 
-  const json = JSON.stringify(toTerriaJson(item), null, 2);
+  const json = JSON.stringify({ type: model.type, ...item }, null, 2);
   const searching = filter.trim() !== "";
   const visibleSections = searching ? sections : sections.filter((s) => s.id === active);
 
@@ -117,7 +88,7 @@ export default function App() {
     const root = issue.path.split(".")[0];
     setFilter("");
     setOnlySet(false);
-    setActive(sectionOf(root));
+    setActive(sections.find((s) => s.traits.includes(root))?.id ?? sections[0].id);
     requestAnimationFrame(() => {
       const parts = issue.path.split(".");
       for (let n = parts.length; n > 0; n--) {
@@ -142,7 +113,7 @@ export default function App() {
   };
 
   const download = () => {
-    const base = String(item.id ?? item.name ?? "wms-item").replace(/[^\w.-]+/g, "-");
+    const base = String(item.id ?? item.name ?? `${model.type}-item`).replace(/[^\w.-]+/g, "-");
     const url = URL.createObjectURL(new Blob([json + "\n"], { type: "application/json" }));
     const a = Object.assign(document.createElement("a"), { href: url, download: `${base}.json` });
     a.click();
@@ -150,7 +121,7 @@ export default function App() {
   };
 
   const replaceItem = (next: JsonObject, nextRecord: SavedRecord | null) => {
-    setItem(orderLikeForm(next));
+    setItem(orderLikeForm(model, next));
     setRecord(nextRecord);
     setDraftErrors({});
     setCapabilities(null);
@@ -158,7 +129,7 @@ export default function App() {
   };
 
   const reset = () => {
-    if (Object.keys(item).length && !confirm("Clear all fields and start a new WMS item?")) return;
+    if (Object.keys(item).length && !confirm(`Clear all fields and start a new ${model.type} item?`)) return;
     replaceItem({}, null);
   };
 
@@ -166,7 +137,7 @@ export default function App() {
     setSaving(true);
     setSaveMessage(null);
     try {
-      const saved = await saveWmsConfig(item, record ?? undefined);
+      const saved = await saveItemConfig(model.type, item, record ?? undefined);
       setRecord({ id: saved.id, version: saved.version, name: saved.name });
       setSaveMessage({ level: "ok", text: `Saved version ${saved.version}` });
     } catch (e) {
@@ -183,8 +154,8 @@ export default function App() {
           <div className="brand">
             <h1>Terria Layer Manager</h1>
             <span>
-              {wmsTraits.model} · <code>"type": "wms"</code> ·{" "}
-              <a href={wmsTraits.source} target="_blank" rel="noreferrer">
+              {model.model} · <code>"type": "{model.type}"</code> ·{" "}
+              <a href={model.source} target="_blank" rel="noreferrer">
                 docs
               </a>
             </span>
@@ -235,7 +206,7 @@ export default function App() {
             <input
               className="input search"
               type="search"
-              placeholder={`Search ${totalTraitCount} traits…`}
+              placeholder={`Search ${model.totalTraitCount} traits…`}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
@@ -276,23 +247,23 @@ export default function App() {
           <main className="form">
             {visibleSections.map((s) => {
               const traits = rootTraits.filter((t) => s.traits.includes(t.name));
-              const shown = traits.filter((t) => traitMatches(t, filter.trim()) && (!onlySet || item[t.name] !== undefined));
+              const shown = traits.filter((t) => traitMatches(model, t, filter.trim()) && (!onlySet || item[t.name] !== undefined));
               if (searching && shown.length === 0) return null;
               return (
                 <section key={s.id} className="section">
                   <h2>{s.title}</h2>
-                  {s.id === "basics" && !searching && (
+                  {s.id === "basics" && model.type === "wms" && !searching && (
                     <CapabilitiesPanel capabilities={capabilities} onLoaded={setCapabilities} />
                   )}
                   {s.traits.map((name) => {
                     const trait = rootTraits.find((t) => t.name === name)!;
-                    return <TraitField key={name} className={ROOT_CLASS} trait={trait} path={[name]} />;
+                    return <TraitField key={name} className={model.rootClass} trait={trait} path={[name]} />;
                   })}
                   {shown.length === 0 && <p className="hint">No traits set in this section.</p>}
                 </section>
               );
             })}
-            {searching && !sections.some((s) => rootTraits.some((t) => s.traits.includes(t.name) && traitMatches(t, filter.trim()))) && (
+            {searching && !sections.some((s) => rootTraits.some((t) => s.traits.includes(t.name) && traitMatches(model, t, filter.trim()))) && (
               <p className="hint">No traits match “{filter}”.</p>
             )}
           </main>
@@ -316,6 +287,7 @@ export default function App() {
 
         {importing && (
           <ImportDialog
+            type={model.type}
             onClose={() => setImporting(false)}
             onImport={(obj) => {
               replaceItem(obj, null);
@@ -326,6 +298,7 @@ export default function App() {
 
         {opening && (
           <OpenDialog
+            type={model.type}
             onClose={() => setOpening(false)}
             onOpen={(config) => {
               if (Object.keys(item).length && !confirm(`Replace the current form with “${config.name}”?`)) return;
@@ -339,7 +312,15 @@ export default function App() {
   );
 }
 
-function ImportDialog({ onClose, onImport }: { onClose: () => void; onImport: (item: JsonObject) => void }) {
+function ImportDialog({
+  type,
+  onClose,
+  onImport,
+}: {
+  type: string;
+  onClose: () => void;
+  onImport: (item: JsonObject) => void;
+}) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -347,8 +328,8 @@ function ImportDialog({ onClose, onImport }: { onClose: () => void; onImport: (i
     try {
       const parsed: unknown = JSON.parse(text);
       if (!isPlainObject(parsed)) throw new Error("Expected a single catalog item object");
-      if (parsed.type !== undefined && parsed.type !== "wms") {
-        throw new Error(`This editor only handles "wms" items; got type ${JSON.stringify(parsed.type)}`);
+      if (parsed.type !== undefined && parsed.type !== type) {
+        throw new Error(`This editor only handles "${type}" items; got type ${JSON.stringify(parsed.type)}`);
       }
       const { type: _type, ...rest } = parsed;
       void _type;
@@ -362,14 +343,14 @@ function ImportDialog({ onClose, onImport }: { onClose: () => void; onImport: (i
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="import-title" onClick={(e) => e.stopPropagation()}>
         <h2 id="import-title">Import catalog item JSON</h2>
-        <p className="hint">Paste one WMS catalog item from an init file. This replaces the current form.</p>
+        <p className="hint">Paste one <code>{type}</code> catalog item from an init file. This replaces the current form.</p>
         <textarea
           className="input textarea code"
           rows={14}
           autoFocus
           value={text}
           spellCheck={false}
-          placeholder='{ "type": "wms", "name": "…", "url": "…", "layers": "…" }'
+          placeholder={`{ "type": "${type}", "name": "…", "url": "…" }`}
           onChange={(e) => {
             setText(e.target.value);
             setError(null);
@@ -389,22 +370,22 @@ function ImportDialog({ onClose, onImport }: { onClose: () => void; onImport: (i
   );
 }
 
-function OpenDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (config: WmsConfig) => void }) {
-  const [configs, setConfigs] = useState<WmsConfigSummary[] | null>(null);
+function OpenDialog({ type, onClose, onOpen }: { type: string; onClose: () => void; onOpen: (config: ItemConfig) => void }) {
+  const [configs, setConfigs] = useState<ItemConfigSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    listWmsConfigs()
+    listItemConfigs(type)
       .then(setConfigs)
       .catch((e: Error) => setError(e.message));
-  }, []);
+  }, [type]);
 
   const open = async (id: string) => {
     setLoadingId(id);
     setError(null);
     try {
-      onOpen(await loadWmsConfig(id));
+      onOpen(await loadItemConfig(type, id));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -415,9 +396,13 @@ function OpenDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (config:
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="open-title" onClick={(e) => e.stopPropagation()}>
-        <h2 id="open-title">Open a saved WMS config</h2>
+        <h2 id="open-title">
+          Open a saved <code>{type}</code> config
+        </h2>
         {!configs && !error && <p className="hint">Loading…</p>}
-        {configs?.length === 0 && <p className="hint">No WMS configs saved yet.</p>}
+        {configs?.length === 0 && <p className="hint">
+            No <code>{type}</code> configs saved yet.
+          </p>}
         {configs && configs.length > 0 && (
           <ul className="config-list">
             {configs.map((c) => (

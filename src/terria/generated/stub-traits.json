@@ -1,0 +1,222 @@
+{
+  "type": "stub",
+  "model": "StubCatalogItem",
+  "source": "https://docs.terria.io/guide/connecting-to-data/catalog-type-details/stub/",
+  "root": "StubCatalogItemTraits",
+  "classes": {
+    "StubCatalogItemTraits": [
+      {
+        "name": "isExperiencingIssues",
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the catalog item is experiencing issues which may cause its data to be unavailable"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the catalog item."
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "description": "The description of the catalog item. Markdown and HTML may be used."
+      },
+      {
+        "name": "hideDefaultDescription",
+        "type": "boolean",
+        "description": "If true, then no generic default description will be displayed if description is undefined."
+      },
+      {
+        "name": "nameInCatalog",
+        "type": "string",
+        "description": "The name of the item to be displayed in the catalog, if it is different from the one to display in the workbench."
+      },
+      {
+        "name": "info",
+        "type": "InfoSectionTraits[]",
+        "description": "Human-readable information about this dataset."
+      },
+      {
+        "name": "infoSectionOrder",
+        "type": "string[]",
+        "description": "An array of section titles defining the display order of info sections. If this property is not defined, {@link DataPreviewSections}'s DEFAULT_SECTION_ORDER is used"
+      },
+      {
+        "name": "isOpenInWorkbench",
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the item in the workbench open or collapsed."
+      },
+      {
+        "name": "shortReport",
+        "type": "string",
+        "description": "A short report to show on the now viewing tab."
+      },
+      {
+        "name": "shortReportSections",
+        "type": "ShortReportTraits[]",
+        "description": "A list of collapsible sections of the short report"
+      },
+      {
+        "name": "hideSource",
+        "type": "boolean",
+        "description": "Indicates that the source of this data should be hidden from the UI (obviously this isn't super-secure as you can just look at the network requests)."
+      },
+      {
+        "name": "metadataUrls",
+        "type": "MetadataUrlTraits[]",
+        "description": "Metadata URLs to show in data catalog."
+      },
+      {
+        "name": "dataUrls",
+        "type": "DataUrlTraits[]",
+        "description": "Data URLs to show in data catalog."
+      },
+      {
+        "name": "dataCustodian",
+        "type": "string",
+        "description": "Gets or sets a description of the custodian of this data item."
+      },
+      {
+        "name": "modelDimensions",
+        "type": "EnumDimensionTraits[]",
+        "description": "This provides ability to set model JSON through SelectableDimensions (a dropdown). When an option is selected, the value property will be used to call updateModelFromJson(). All string properties support Mustache templates (with the catalog member as context)"
+      },
+      {
+        "name": "disableAboutData",
+        "type": "boolean",
+        "description": "Disables the 'About Data' button in the workbench."
+      },
+      {
+        "name": "shareable",
+        "type": "boolean",
+        "default": true,
+        "description": "True (default) if this catalog member may be included in share links. False to exclude it from share links."
+      },
+      {
+        "name": "workbenchControlFlags",
+        "type": "any",
+        "description": "Flags for enabling or disabling workbench controls."
+      }
+    ],
+    "InfoSectionTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the section."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the section, in Markdown and HTML format. Set this property to null to remove this section entirely."
+      },
+      {
+        "name": "contentAsObject",
+        "type": "any",
+        "description": "The content of the section which is a JSON object. Set this property to null to remove this section entirely."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if this info section showing (not collapsed)."
+      }
+    ],
+    "ShortReportTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the section."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the section."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if this short report section showing."
+      }
+    ],
+    "MetadataUrlTraits": [
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The metadata URL of the file or service."
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "description": "Title used for metadata URL button."
+      }
+    ],
+    "DataUrlTraits": [
+      {
+        "name": "type",
+        "type": "string",
+        "description": "Type of data URL. This value will be used to provide context or instruction on how to use the data URL. For example wcs will provide a link to WCS docs.\nCurrent supported values are:\n- wfs = A Web Feature Service (WFS) base URL\n- wcs = A Web Coverage Service (WCS) base URL\n- wfs-complete = A complete, ready-to-use link to download features from a WCS server\n-  wcs-complete = A complete, ready-to-use link to download features from a WFS server\n-  direct = Direct URL to dataset (this is the default if no type is specified)\n-  none = Hide data URL"
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The metadata URL of the file or service."
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "description": "Title used for metadata URL button."
+      }
+    ],
+    "EnumDimensionTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "Dimension ID"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Dimension name (human-readable)"
+      },
+      {
+        "name": "options",
+        "type": "DimensionOptionTraits[]",
+        "description": "Dimension options"
+      },
+      {
+        "name": "selectedId",
+        "type": "string",
+        "description": "Selected Option's ID"
+      },
+      {
+        "name": "allowUndefined",
+        "type": "boolean",
+        "description": "Allow dimension to be undefined"
+      },
+      {
+        "name": "disable",
+        "type": "boolean",
+        "description": "Hides dimension"
+      }
+    ],
+    "DimensionOptionTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "Option ID"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Option name (human-readable)"
+      },
+      {
+        "name": "value",
+        "type": "any",
+        "description": "Value (if this is undefined, id will be used)"
+      }
+    ]
+  }
+}

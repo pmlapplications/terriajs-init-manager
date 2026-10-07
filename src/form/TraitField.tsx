@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { getIn, humanize, isPlainObject, pathKey, traitKind, type JsonObject, type Path, type TraitDef } from "../terria/traits";
 import { fieldId, traitMatches } from "./paths";
-import { classTraits, specFor, type FieldSpec } from "../terria/wms-ui";
+import type { FieldSpec } from "../terria/catalog-ui";
 import type { Issue } from "../terria/validate";
 import { useEditor } from "./context";
 import { BooleanInput, ColorInput, JsonInput, NumberInput, SelectInput, TextArea, TextInput } from "./inputs";
@@ -40,15 +40,15 @@ const isSet = (v: unknown) => v !== undefined;
 
 /** One trait: label, input for its type, description and any issues. */
 export function TraitField({ className, trait, path }: { className: string; trait: TraitDef; path: Path }) {
-  const { item, update, issuesAt, setDraftError, filter, onlySet } = useEditor();
+  const { model, item, update, issuesAt, setDraftError, filter, onlySet } = useEditor();
   const key = pathKey(path);
   const value = getIn(item, path);
-  const spec = specFor(className, trait);
+  const spec = model.specFor(className, trait);
   const kind = traitKind(trait.type);
   const issues = issuesAt(key);
   const onDraftError = (m: string | null) => setDraftError(key, m);
 
-  if (!traitMatches(trait, filter)) return null;
+  if (!traitMatches(model, trait, filter)) return null;
   if (onlySet && !isSet(value)) return null;
 
   const set = (v: unknown) => update(path, v);
@@ -249,9 +249,10 @@ function StringListInput({ path, value, spec }: { path: Path; value: unknown; sp
 
 /** Fields of a nested traits class. */
 export function ClassFields({ className, path }: { className: string; path: Path }) {
+  const { model } = useEditor();
   return (
     <>
-      {classTraits(className).map((t) => (
+      {model.classTraits(className).map((t) => (
         <TraitField key={t.name} className={className} trait={t} path={[...path, t.name]} />
       ))}
     </>

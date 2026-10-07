@@ -1,14 +1,14 @@
-// UI configuration for WebMapServiceCatalogItem: widgets, allowed values and
+// UI configuration for Terria catalog items: widgets, allowed values and
 // ranges that the docs only state in prose, plus how traits are grouped.
 //
-// Specs are keyed by "<TraitsClass>.<trait>". Strict dropdowns ("select") are
-// used only where the docs list the valid values; "combo" offers suggestions
-// but accepts any text.
+// Specs are keyed by "<TraitsClass>.<trait>". Nested classes (LegendTraits,
+// RectangleTraits, ...) are shared by every type, so their specs apply
+// everywhere. Root traits common to many types are in COMMON_ROOT. Strict
+// dropdowns ("select") are used only where the docs list the valid values;
+// "combo" offers suggestions but accepts any text.
 
-import generated from "./generated/wms-traits.json";
+import itemTypeIndex from "./generated/index.json";
 import { isPlainObject, traitKind, type JsonObject, type TraitDef, type TraitsFile } from "./traits";
-
-export const wmsTraits = generated as TraitsFile;
 
 export interface Option {
   value: string | number;
@@ -57,11 +57,75 @@ const DURATION: FieldSpec = { widget: "duration", options: opts("0d", "1h", "1d"
 // Varnish-style duration, e.g. "1d", "10000s".
 export const DURATION_RE = /^\d+(\.\d+)?(ms|s|m|h|d|w|y)$/;
 
-export const SUPPORTED_CRS = ["EPSG:3857", "EPSG:900913", "EPSG:4326", "CRS:84", "EPSG:4283"];
+// Root traits shared by many catalog types. Each applies only where the trait
+// has the given type, since a few names mean different things in different
+// types (WMS `styles` is text, table `styles` is a list of objects).
+const COMMON_ROOT: Record<string, [type: string, spec: FieldSpec]> = {
+  name: ["string", { required: true }],
+  dimensions: ["any", JSON_OBJECT],
+  parameters: ["any", JSON_OBJECT],
+  getFeatureInfoParameters: ["any", JSON_OBJECT],
+  workbenchControlFlags: ["any", JSON_OBJECT],
+  diffItemProperties: ["any", JSON_OBJECT],
+  maxRefreshIntervals: ["number", { min: 1, integer: true }],
+  description: ["string", { widget: "textarea" }],
+  shortReport: ["string", { widget: "textarea" }],
+  chartDisclaimer: ["string", { widget: "textarea" }],
+  scaleWorkbenchInfo: ["string", { widget: "textarea" }],
+  chartType: ["string", { widget: "combo", options: opts("momentLines", "momentPoints") }],
+  chartGlyphStyle: [
+    "string",
+    { widget: "select", options: opts("circle", "cross", "diamond", "square", "star", "triangle", "wye") },
+  ],
+  firstDiffDate: ["string", { widget: "datetime" }],
+  secondDiffDate: ["string", { widget: "datetime" }],
+  fromContinuous: ["string", { widget: "select", options: opts("nearest", "next", "previous") }],
+  multiplierDefaultDeltaStep: ["number", NON_NEGATIVE],
+  getCapabilitiesCacheDuration: ["string", DURATION],
+  cacheDuration: ["string", DURATION],
+  leafletUpdateInterval: ["number", NON_NEGATIVE],
+  minimumLevel: ["number", NON_NEGATIVE_INT],
+  maximumLevel: ["number", NON_NEGATIVE_INT],
+  tileWidth: ["number", { min: 1, integer: true }],
+  tileHeight: ["number", { min: 1, integer: true }],
+  maximumShownFeatureInfos: ["number", NON_NEGATIVE_INT],
+  preferredViewerMode: [
+    "string",
+    {
+      widget: "select",
+      options: [
+        { value: "2d", label: "2d (Leaflet)" },
+        { value: "3d", label: "3d (Cesium, terrain)" },
+        { value: "3dsmooth", label: "3dsmooth (Cesium, no terrain)" },
+      ],
+    },
+  ],
+  maxScaleDenominator: ["number", { min: 0, exclusiveMin: true }],
+  minScaleDenominator: ["number", { min: 0, exclusiveMin: true }],
+  opacity: ["number", { min: 0, max: 1 }],
+  splitDirection: [
+    "number",
+    {
+      widget: "select",
+      options: [
+        { value: -1, label: "Left (-1)" },
+        { value: 0, label: "Both sides (0)" },
+        { value: 1, label: "Right (1)" },
+      ],
+    },
+  ],
+  currentTime: ["string", { widget: "datetime" }],
+  startTime: ["string", { widget: "datetime" }],
+  stopTime: ["string", { widget: "datetime" }],
+  initialTimeSource: ["string", { widget: "select", options: opts("start", "stop", "now", "none") }],
+  dateFormat: [
+    "string",
+    { widget: "combo", options: opts("yyyy", "mmm yyyy", "yyyy-mm-dd", "dd/mm/yyyy", "yyyy-mm-dd HH:MM") },
+  ],
+};
 
 export const specs: Record<string, FieldSpec> = {
   // --- WebMapServiceCatalogItemTraits -------------------------------------
-  "WebMapServiceCatalogItemTraits.name": { required: true },
   "WebMapServiceCatalogItemTraits.url": { widget: "url", required: true, placeholder: "https://example.org/geoserver/wms" },
   "WebMapServiceCatalogItemTraits.layers": { widget: "wmsLayers" },
   "WebMapServiceCatalogItemTraits.styles": { widget: "wmsStyles" },
@@ -74,60 +138,6 @@ export const specs: Record<string, FieldSpec> = {
       { value: "CRS:84", label: "CRS:84 (WGS 84)" },
       { value: "EPSG:4283", label: "EPSG:4283 (GDA94)" },
     ],
-  },
-  "WebMapServiceCatalogItemTraits.dimensions": JSON_OBJECT,
-  "WebMapServiceCatalogItemTraits.parameters": JSON_OBJECT,
-  "WebMapServiceCatalogItemTraits.getFeatureInfoParameters": JSON_OBJECT,
-  "WebMapServiceCatalogItemTraits.workbenchControlFlags": JSON_OBJECT,
-  "WebMapServiceCatalogItemTraits.diffItemProperties": JSON_OBJECT,
-  "WebMapServiceCatalogItemTraits.maxRefreshIntervals": { min: 1, integer: true },
-  "WebMapServiceCatalogItemTraits.description": { widget: "textarea" },
-  "WebMapServiceCatalogItemTraits.shortReport": { widget: "textarea" },
-  "WebMapServiceCatalogItemTraits.chartDisclaimer": { widget: "textarea" },
-  "WebMapServiceCatalogItemTraits.scaleWorkbenchInfo": { widget: "textarea" },
-  "WebMapServiceCatalogItemTraits.chartType": { widget: "combo", options: opts("momentLines", "momentPoints") },
-  "WebMapServiceCatalogItemTraits.chartGlyphStyle": {
-    widget: "select",
-    options: opts("circle", "cross", "diamond", "square", "star", "triangle", "wye"),
-  },
-  "WebMapServiceCatalogItemTraits.firstDiffDate": { widget: "datetime" },
-  "WebMapServiceCatalogItemTraits.secondDiffDate": { widget: "datetime" },
-  "WebMapServiceCatalogItemTraits.fromContinuous": { widget: "select", options: opts("nearest", "next", "previous") },
-  "WebMapServiceCatalogItemTraits.multiplierDefaultDeltaStep": NON_NEGATIVE,
-  "WebMapServiceCatalogItemTraits.getCapabilitiesCacheDuration": DURATION,
-  "WebMapServiceCatalogItemTraits.cacheDuration": DURATION,
-  "WebMapServiceCatalogItemTraits.leafletUpdateInterval": NON_NEGATIVE,
-  "WebMapServiceCatalogItemTraits.minimumLevel": NON_NEGATIVE_INT,
-  "WebMapServiceCatalogItemTraits.maximumLevel": NON_NEGATIVE_INT,
-  "WebMapServiceCatalogItemTraits.tileWidth": { min: 1, integer: true },
-  "WebMapServiceCatalogItemTraits.tileHeight": { min: 1, integer: true },
-  "WebMapServiceCatalogItemTraits.maximumShownFeatureInfos": NON_NEGATIVE_INT,
-  "WebMapServiceCatalogItemTraits.preferredViewerMode": {
-    widget: "select",
-    options: [
-      { value: "2d", label: "2d (Leaflet)" },
-      { value: "3d", label: "3d (Cesium, terrain)" },
-      { value: "3dsmooth", label: "3dsmooth (Cesium, no terrain)" },
-    ],
-  },
-  "WebMapServiceCatalogItemTraits.maxScaleDenominator": { min: 0, exclusiveMin: true },
-  "WebMapServiceCatalogItemTraits.minScaleDenominator": { min: 0, exclusiveMin: true },
-  "WebMapServiceCatalogItemTraits.opacity": { min: 0, max: 1 },
-  "WebMapServiceCatalogItemTraits.splitDirection": {
-    widget: "select",
-    options: [
-      { value: -1, label: "Left (-1)" },
-      { value: 0, label: "Both sides (0)" },
-      { value: 1, label: "Right (1)" },
-    ],
-  },
-  "WebMapServiceCatalogItemTraits.currentTime": { widget: "datetime" },
-  "WebMapServiceCatalogItemTraits.startTime": { widget: "datetime" },
-  "WebMapServiceCatalogItemTraits.stopTime": { widget: "datetime" },
-  "WebMapServiceCatalogItemTraits.initialTimeSource": { widget: "select", options: opts("start", "stop", "now", "none") },
-  "WebMapServiceCatalogItemTraits.dateFormat": {
-    widget: "combo",
-    options: opts("yyyy", "mmm yyyy", "yyyy-mm-dd", "dd/mm/yyyy", "yyyy-mm-dd HH:MM"),
   },
 
   // --- Nested classes -----------------------------------------------------
@@ -210,17 +220,8 @@ export const specs: Record<string, FieldSpec> = {
   "TileCoordinates.level": NON_NEGATIVE_INT,
 };
 
-/** Spec for a trait: explicit entry, else inferred from its name. */
-export function specFor(className: string, trait: TraitDef): FieldSpec {
-  const explicit = specs[`${className}.${trait.name}`];
-  if (explicit?.widget || trait.type !== "string") return explicit ?? {};
-  if (/(^url$|Url$)/.test(trait.name)) return { widget: "url", ...explicit };
-  if (/(^color$|Color$)/.test(trait.name)) return { widget: "color", ...explicit };
-  return explicit ?? {};
-}
-
-// Catalog-entry fields that are not WMS traits but belong in the init file.
-export const ENTRY_TRAITS: TraitDef[] = [
+// Catalog-entry fields that are not Terria traits but belong in the init file.
+const ENTRY_TRAITS: TraitDef[] = [
   {
     name: "id",
     type: "string",
@@ -240,6 +241,8 @@ export interface Section {
   traits: string[];
 }
 
+// Shared layout; each type shows the traits it has. Traits not placed here
+// go in a section of their own after "Basics".
 const SECTION_LAYOUT: Section[] = [
   {
     id: "basics",
@@ -247,8 +250,8 @@ const SECTION_LAYOUT: Section[] = [
     traits: ["id", "name", "url", "layers", "styles", "description", "nameInCatalog", "attribution", "dataCustodian", "shareKeys"],
   },
   {
-    id: "wms",
-    title: "WMS requests",
+    id: "requests",
+    title: "Service requests",
     traits: [
       "crs", "useWmsVersion130", "parameters", "dimensions", "getCapabilitiesUrl", "getCapabilitiesCacheDuration",
       "maxRefreshIntervals", "isGeoServer", "isEsri", "isThredds", "isNcWMS", "supportsGetLegendGraphic",
@@ -313,57 +316,118 @@ const SECTION_LAYOUT: Section[] = [
   { id: "network", title: "Network & caching", traits: ["forceProxy", "cacheDuration"] },
 ];
 
-export const ROOT_CLASS = wmsTraits.root;
-
-/** All top-level trait definitions, including entry fields. */
-export const rootTraits: TraitDef[] = [...ENTRY_TRAITS, ...wmsTraits.classes[ROOT_CLASS]];
-
-/** Sections with any traits not placed above collected under "Other". */
-export const sections: Section[] = (() => {
-  const placed = new Set(SECTION_LAYOUT.flatMap((s) => s.traits));
-  const known = new Set(rootTraits.map((t) => t.name));
-  const layout = SECTION_LAYOUT.map((s) => ({ ...s, traits: s.traits.filter((t) => known.has(t)) }));
-  const other = rootTraits.map((t) => t.name).filter((t) => !placed.has(t));
-  return other.length ? [...layout, { id: "other", title: "Other", traits: other }] : layout;
-})();
-
-/** Number of traits across all classes, for display. */
-export const totalTraitCount = ENTRY_TRAITS.length + Object.values(wmsTraits.classes).reduce((n, t) => n + t.length, 0);
-
-export function classTraits(className: string): TraitDef[] {
-  return className === ROOT_CLASS ? rootTraits : (wmsTraits.classes[className] ?? []);
+export interface ItemType {
+  /** Terria `type`, e.g. "wms". */
+  type: string;
+  /** Terria model class, e.g. "WebMapServiceCatalogItem". */
+  model: string;
 }
 
-const ROOT_ORDER = sections.flatMap((s) => s.traits);
+/** Catalog item types with generated traits, in docs order. */
+export const itemTypes: ItemType[] = itemTypeIndex;
+
+/** "WebMapServiceCatalogItem" -> "WebMapService". */
+export const shortModelName = (model: string) => model.replace(/CatalogItem$/, "");
+
+/** Everything the editor needs to know about one catalog item type. */
+export interface CatalogModel {
+  type: string;
+  model: string;
+  source: string;
+  rootClass: string;
+  /** All top-level trait definitions, including entry fields. */
+  rootTraits: TraitDef[];
+  sections: Section[];
+  /** Number of traits across all classes, for display. */
+  totalTraitCount: number;
+  classTraits(className: string): TraitDef[];
+  /** Spec for a trait: explicit entry, else inferred from its name. */
+  specFor(className: string, trait: TraitDef): FieldSpec;
+}
+
+export function buildModel(file: TraitsFile): CatalogModel {
+  const rootClass = file.root;
+  const rootTraits = [...ENTRY_TRAITS, ...file.classes[rootClass]];
+  const known = new Set(rootTraits.map((t) => t.name));
+  const placed = new Set(SECTION_LAYOUT.flatMap((s) => s.traits));
+  const layout = SECTION_LAYOUT.map((s) => ({ ...s, traits: s.traits.filter((t) => known.has(t)) })).filter((s) => s.traits.length);
+  const specific = rootTraits.map((t) => t.name).filter((t) => !placed.has(t));
+  const sections = specific.length
+    ? [layout[0], { id: "specific", title: `${shortModelName(file.model)} options`, traits: specific }, ...layout.slice(1)]
+    : layout;
+
+  const classTraits = (className: string) => (className === rootClass ? rootTraits : (file.classes[className] ?? []));
+
+  const specFor = (className: string, trait: TraitDef): FieldSpec => {
+    let explicit = specs[`${className}.${trait.name}`];
+    if (!explicit && className === rootClass) {
+      const common = COMMON_ROOT[trait.name];
+      if (common && common[0] === trait.type) explicit = common[1];
+    }
+    if (explicit?.widget || trait.type !== "string") return explicit ?? {};
+    if (/(^url$|Url$)/.test(trait.name)) return { widget: "url", ...explicit };
+    if (/(^color$|Color$)/.test(trait.name)) return { widget: "color", ...explicit };
+    return explicit ?? {};
+  };
+
+  return {
+    type: file.type,
+    model: file.model,
+    source: file.source,
+    rootClass,
+    rootTraits,
+    sections,
+    totalTraitCount: ENTRY_TRAITS.length + Object.values(file.classes).reduce((n, t) => n + t.length, 0),
+    classTraits,
+    specFor,
+  };
+}
+
+const traitFiles = import.meta.glob<TraitsFile>("./generated/*-traits.json", { import: "default" });
+const models = new Map<string, Promise<CatalogModel>>();
+
+/** Loads (once) the traits for a catalog item type. */
+export function loadModel(type: string): Promise<CatalogModel> {
+  let model = models.get(type);
+  if (!model) {
+    const load = traitFiles[`./generated/${type}-traits.json`];
+    if (!load) return Promise.reject(new Error(`Unknown catalog item type "${type}"`));
+    model = load().then(buildModel);
+    models.set(type, model);
+  }
+  return model;
+}
 
 /**
  * Reorder keys to match the form: section order at the root, docs order inside
  * nested traits. Keys the form doesn't know keep their relative order at the end.
  */
-export function orderLikeForm(item: JsonObject): JsonObject {
-  return orderObject(item, ROOT_CLASS);
-}
+export function orderLikeForm(model: CatalogModel, item: JsonObject): JsonObject {
+  const rootOrder = model.sections.flatMap((s) => s.traits);
 
-function orderObject(obj: JsonObject, className: string): JsonObject {
-  const traits = classTraits(className);
-  const names = className === ROOT_CLASS ? ROOT_ORDER : traits.map((t) => t.name);
-  const types = new Map(traits.map((t) => [t.name, t.type]));
-  const out: JsonObject = {};
-  for (const name of names) {
-    if (Object.hasOwn(obj, name)) out[name] = orderChild(obj[name], types.get(name));
-  }
-  for (const [key, value] of Object.entries(obj)) {
-    if (!Object.hasOwn(out, key)) out[key] = value;
-  }
-  return out;
-}
+  const orderObject = (obj: JsonObject, className: string): JsonObject => {
+    const traits = model.classTraits(className);
+    const names = className === model.rootClass ? rootOrder : traits.map((t) => t.name);
+    const types = new Map(traits.map((t) => [t.name, t.type]));
+    const out: JsonObject = {};
+    for (const name of names) {
+      if (Object.hasOwn(obj, name)) out[name] = orderChild(obj[name], types.get(name));
+    }
+    for (const [key, value] of Object.entries(obj)) {
+      if (!Object.hasOwn(out, key)) out[key] = value;
+    }
+    return out;
+  };
 
-function orderChild(value: unknown, type: string | undefined): unknown {
-  if (type === undefined) return value;
-  const kind = traitKind(type);
-  if (kind.kind === "object" && isPlainObject(value)) return orderObject(value, kind.className);
-  if (kind.kind === "objectArray" && Array.isArray(value)) {
-    return value.map((v) => (isPlainObject(v) ? orderObject(v, kind.className) : v));
-  }
-  return value;
+  const orderChild = (value: unknown, type: string | undefined): unknown => {
+    if (type === undefined) return value;
+    const kind = traitKind(type);
+    if (kind.kind === "object" && isPlainObject(value)) return orderObject(value, kind.className);
+    if (kind.kind === "objectArray" && Array.isArray(value)) {
+      return value.map((v) => (isPlainObject(v) ? orderObject(v, kind.className) : v));
+    }
+    return value;
+  };
+
+  return orderObject(item, model.rootClass);
 }

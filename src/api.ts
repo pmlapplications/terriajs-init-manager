@@ -2,9 +2,11 @@
 
 import type { JsonObject } from "./terria/traits";
 
-export interface WmsConfigSummary {
+export interface ItemConfigSummary {
   /** Database row id. */
   id: string;
+  /** Terria `type`, e.g. "wms". */
+  type: string;
   /** Terria `id`, if the item sets one. */
   terriaId: string | null;
   name: string;
@@ -15,7 +17,7 @@ export interface WmsConfigSummary {
   updatedAt: string;
 }
 
-export interface WmsConfig extends WmsConfigSummary {
+export interface ItemConfig extends ItemConfigSummary {
   item: JsonObject;
 }
 
@@ -81,21 +83,24 @@ export const createUser = (user: NewUser) => request<User>("/users", { method: "
 
 export const deleteUser = (id: string) => request<null>(`/users/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-// --- WMS configs -------------------------------------------------------------
+// --- Catalog item configs ----------------------------------------------------
 
-export const listWmsConfigs = () => request<WmsConfigSummary[]>("/wms");
+const itemsPath = (type: string, id?: string) =>
+  `/items/${encodeURIComponent(type)}${id === undefined ? "" : `/${encodeURIComponent(id)}`}`;
 
-export const loadWmsConfig = (id: string) => request<WmsConfig>(`/wms/${encodeURIComponent(id)}`);
+export const listItemConfigs = (type: string) => request<ItemConfigSummary[]>(itemsPath(type));
+
+export const loadItemConfig = (type: string, id: string) => request<ItemConfig>(itemsPath(type, id));
 
 /**
  * Saves an item. Without `existing` a new config is created; with it, that
  * config is overwritten, failing with status 409 if it changed since `version`.
  */
-export function saveWmsConfig(item: JsonObject, existing?: { id: string; version: number }) {
+export function saveItemConfig(type: string, item: JsonObject, existing?: { id: string; version: number }) {
   return existing
-    ? request<WmsConfig>(`/wms/${encodeURIComponent(existing.id)}`, {
+    ? request<ItemConfig>(itemsPath(type, existing.id), {
         method: "PUT",
         body: JSON.stringify({ version: existing.version, item }),
       })
-    : request<WmsConfig>("/wms", { method: "POST", body: JSON.stringify(item) });
+    : request<ItemConfig>(itemsPath(type), { method: "POST", body: JSON.stringify(item) });
 }

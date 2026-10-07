@@ -11,7 +11,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "generate:traits": "node scripts/generate-traits.mjs"
+    "generate:traits": "node scripts/generate-traits.mjs --all"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",

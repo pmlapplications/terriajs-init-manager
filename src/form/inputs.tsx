@@ -3,7 +3,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { isCssColor } from "../terria/validate";
-import type { Option } from "../terria/wms-ui";
+import type { Option } from "../terria/catalog-ui";
 
 interface InputProps<T> {
   id: string;

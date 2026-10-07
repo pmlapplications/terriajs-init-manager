@@ -10,10 +10,10 @@
 //   POST   /api/users        create a user; body { email, firstName, lastName, password }
 //   DELETE /api/users/:id    delete a user (not yourself)
 //
-//   GET    /api/wms          list stored WMS configs
-//   GET    /api/wms/:id      load one config
-//   POST   /api/wms          create a config from an item
-//   PUT    /api/wms/:id      update a config; body { version, item }
+//   GET    /api/items/:type      list stored configs of a catalog item type (wms, csv, ...)
+//   GET    /api/items/:type/:id  load one config
+//   POST   /api/items/:type      create a config from an item
+//   PUT    /api/items/:type/:id  update a config; body { version, item }
 
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -22,7 +22,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { PG_CHECK_VIOLATION, PG_UNIQUE_VIOLATION, pgErrorCode, pool } from "./db.ts";
 import { ApiError } from "./errors.ts";
 import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseNewUser, sessionUser, type User } from "./users.ts";
-import { createWmsConfig, getWmsConfig, listWmsConfigs, updateWmsConfig } from "./wms.ts";
+import { createItemConfig, getItemConfig, listItemConfigs, updateItemConfig } from "./items.ts";
 
 const app = new Hono<{ Variables: { user: User } }>();
 
@@ -87,17 +87,19 @@ app.delete("/api/users/:id", async (c) => {
   return c.body(null, 204);
 });
 
-app.get("/api/wms", async (c) => c.json(await listWmsConfigs()));
+app.get("/api/items/:type", async (c) => c.json(await listItemConfigs(c.req.param("type"))));
 
-app.get("/api/wms/:id", async (c) => c.json(await getWmsConfig(c.req.param("id"))));
+app.get("/api/items/:type/:id", async (c) => c.json(await getItemConfig(c.req.param("type"), c.req.param("id"))));
 
-app.post("/api/wms", async (c) => c.json(await createWmsConfig(await jsonBody(c), c.var.user.email), 201));
+app.post("/api/items/:type", async (c) =>
+  c.json(await createItemConfig(c.req.param("type"), await jsonBody(c), c.var.user.email), 201),
+);
 
-app.put("/api/wms/:id", async (c) => {
+app.put("/api/items/:type/:id", async (c) => {
   const body = await jsonBody(c);
   const { version, item } = (body ?? {}) as { version?: unknown; item?: unknown };
   if (!Number.isInteger(version)) throw new ApiError(400, `"version" must be an integer`);
-  return c.json(await updateWmsConfig(c.req.param("id"), version as number, item, c.var.user.email));
+  return c.json(await updateItemConfig(c.req.param("type"), c.req.param("id"), version as number, item, c.var.user.email));
 });
 
 app.notFound((c) => (c.req.path.startsWith("/api/") ? c.json({ error: "Not found" }, 404) : c.text("Not found", 404)));

@@ -1,0 +1,1200 @@
+{
+  "type": "i3s",
+  "model": "I3SCatalogItem",
+  "source": "https://docs.terria.io/guide/connecting-to-data/catalog-type-details/i3s/",
+  "root": "I3SCatalogItemTraits",
+  "classes": {
+    "I3SCatalogItemTraits": [
+      {
+        "name": "token",
+        "type": "string",
+        "description": "Token to use for ArcGIS REST API requests"
+      },
+      {
+        "name": "attribution",
+        "type": "string",
+        "description": "The attribution to display with the data."
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the catalog item."
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "description": "The description of the catalog item. Markdown and HTML may be used."
+      },
+      {
+        "name": "hideDefaultDescription",
+        "type": "boolean",
+        "description": "If true, then no generic default description will be displayed if description is undefined."
+      },
+      {
+        "name": "nameInCatalog",
+        "type": "string",
+        "description": "The name of the item to be displayed in the catalog, if it is different from the one to display in the workbench."
+      },
+      {
+        "name": "info",
+        "type": "InfoSectionTraits[]",
+        "description": "Human-readable information about this dataset."
+      },
+      {
+        "name": "infoSectionOrder",
+        "type": "string[]",
+        "description": "An array of section titles defining the display order of info sections. If this property is not defined, {@link DataPreviewSections}'s DEFAULT_SECTION_ORDER is used"
+      },
+      {
+        "name": "isOpenInWorkbench",
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the item in the workbench open or collapsed."
+      },
+      {
+        "name": "shortReport",
+        "type": "string",
+        "description": "A short report to show on the now viewing tab."
+      },
+      {
+        "name": "shortReportSections",
+        "type": "ShortReportTraits[]",
+        "description": "A list of collapsible sections of the short report"
+      },
+      {
+        "name": "isExperiencingIssues",
+        "type": "boolean",
+        "description": "Whether the catalog item is experiencing issues which may cause its data to be unavailable"
+      },
+      {
+        "name": "hideSource",
+        "type": "boolean",
+        "description": "Indicates that the source of this data should be hidden from the UI (obviously this isn't super-secure as you can just look at the network requests)."
+      },
+      {
+        "name": "metadataUrls",
+        "type": "MetadataUrlTraits[]",
+        "description": "Metadata URLs to show in data catalog."
+      },
+      {
+        "name": "dataUrls",
+        "type": "DataUrlTraits[]",
+        "description": "Data URLs to show in data catalog."
+      },
+      {
+        "name": "dataCustodian",
+        "type": "string",
+        "description": "Gets or sets a description of the custodian of this data item."
+      },
+      {
+        "name": "modelDimensions",
+        "type": "EnumDimensionTraits[]",
+        "description": "This provides ability to set model JSON through SelectableDimensions (a dropdown). When an option is selected, the value property will be used to call updateModelFromJson(). All string properties support Mustache templates (with the catalog member as context)"
+      },
+      {
+        "name": "disableAboutData",
+        "type": "boolean",
+        "description": "Disables the 'About Data' button in the workbench."
+      },
+      {
+        "name": "shareable",
+        "type": "boolean",
+        "default": true,
+        "description": "True (default) if this catalog member may be included in share links. False to exclude it from share links."
+      },
+      {
+        "name": "workbenchControlFlags",
+        "type": "any",
+        "description": "Flags for enabling or disabling workbench controls."
+      },
+      {
+        "name": "options",
+        "type": "OptionsTraits",
+        "description": "Additional options to pass to Cesium's Cesium3DTileset constructor."
+      },
+      {
+        "name": "style",
+        "type": "any",
+        "description": "The style to use, specified according to the Cesium 3D Tiles Styling Language."
+      },
+      {
+        "name": "filters",
+        "type": "FilterTraits[]",
+        "description": "The filters to apply to this catalog item."
+      },
+      {
+        "name": "colorBlendMode",
+        "type": "string",
+        "default": "MIX",
+        "description": "The color blend mode decides how per-feature color is blended with color defined in the tileset. Acceptable values are HIGHLIGHT, MIX & REPLACE as defined in the cesium documentation - https://cesium.com/docs/cesiumjs-ref-doc/Cesium3DTileColorBlendMode.html"
+      },
+      {
+        "name": "colorBlendAmount",
+        "type": "number",
+        "default": 0.5,
+        "description": "When the colorBlendMode is MIX this value is used to interpolate between source color and feature color. A value of 0.0 results in the source color while a value of 1.0 results in the feature color, with any value in-between resulting in a mix of the source color and feature color."
+      },
+      {
+        "name": "featureIdProperties",
+        "type": "string[]",
+        "description": "One or many properties of a feature that together identify it uniquely. This is useful for setting properties for individual features. eg: ['lat', 'lon'], ['buildingId'] etc."
+      },
+      {
+        "name": "lightColor",
+        "type": "number[]",
+        "description": "The light color when shading models. When undefined the scene's light color is used instead. eg: [255, 255, 255]."
+      },
+      {
+        "name": "drapeImagery",
+        "type": "boolean",
+        "description": "When true allows draping imagery on top of this tileset. Imagery items appearing above this catalog item in the workbench will be draped on top of the tileset."
+      },
+      {
+        "name": "ionAssetId",
+        "type": "number",
+        "description": "The Cesium ion asset id. If this is set then the url is ignored"
+      },
+      {
+        "name": "ionAccessToken",
+        "type": "string",
+        "description": "Cesium ion access token. If not specified, the default token is used."
+      },
+      {
+        "name": "ionServer",
+        "type": "string",
+        "description": "URL of the Cesium ion API server. If not specified, the default Ion server, https://api.cesium.com/, is used."
+      },
+      {
+        "name": "clippingPlanes",
+        "type": "ClippingPlaneCollectionTraits",
+        "description": "The ClippingPlaneCollection used to selectively disable rendering the tileset."
+      },
+      {
+        "name": "clippingBox",
+        "type": "ClippingBoxTraits",
+        "description": "Defines a user controllable clipping box used to hide or show sections of a model."
+      },
+      {
+        "name": "featureInfoUrlTemplate",
+        "type": "string",
+        "description": "A template URL string for fetching feature info. Template values of the form {x} will be replaced with corresponding property values from the picked feature."
+      },
+      {
+        "name": "maxRequests",
+        "type": "number",
+        "default": 10,
+        "description": "Max number of feature info requests to send to API url. Keep this number small to avoid sending to many requests to server (default 10)."
+      },
+      {
+        "name": "allowFeaturePicking",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates whether features in this catalog item can be selected by clicking them on the map."
+      },
+      {
+        "name": "highlightColor",
+        "type": "string",
+        "default": "#ff3f00",
+        "description": "The color used to highlight a feature when it is picked. If not set, this defaults to Terria.baseMapContrastColor"
+      },
+      {
+        "name": "terrainURL",
+        "type": "string",
+        "description": "URL to construct ArcGISTiledElevationTerrainProvider for I3S geometry."
+      },
+      {
+        "name": "lightingFactor",
+        "type": "number[]",
+        "description": "Cartesian2 of lighting factor for imageBasedLightingFactor"
+      },
+      {
+        "name": "keepOnTop",
+        "type": "boolean",
+        "description": "Keeps the layer on top of all other imagery layers."
+      },
+      {
+        "name": "supportsReordering",
+        "type": "boolean",
+        "default": true,
+        "description": "Does this layer support reordering in the workbench."
+      },
+      {
+        "name": "legends",
+        "type": "LegendTraits[]",
+        "description": "The legends to display on the workbench."
+      },
+      {
+        "name": "legendBackgroundColor",
+        "type": "string",
+        "description": "Apply background color to all legends. This can be useful if legends are transparent and clash with Terria colours"
+      },
+      {
+        "name": "hideLegendInWorkbench",
+        "type": "boolean",
+        "description": "Whether the legend is hidden in the workbench for this catalog member."
+      },
+      {
+        "name": "rectangle",
+        "type": "RectangleTraits",
+        "description": "The bounding box rectangle that contains all the data in this catalog item."
+      },
+      {
+        "name": "idealZoom",
+        "type": "IdealZoomTraits",
+        "description": "Override default ideal zoom if the given values are valid."
+      },
+      {
+        "name": "disablePreview",
+        "type": "boolean",
+        "description": "Disables the preview on the Add Data panel. This is useful when the preview will be very slow to load."
+      },
+      {
+        "name": "disableZoomTo",
+        "type": "boolean",
+        "description": "Disables the zoom to (aka 'Ideal Zoom') button in the workbench."
+      },
+      {
+        "name": "zoomOnAddToWorkbench",
+        "type": "boolean",
+        "description": "Zoom to dataset when added to workbench. Doesn't work if disableZoomTo is true."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Show or hide a workbench item. When show is false, a mappable item is removed from the map and a chartable item is removed from the chart panel."
+      },
+      {
+        "name": "initialMessage",
+        "type": "InitialMessageTraits",
+        "description": "A message to show when the user adds the catalog item to the workbench. Useful for showing disclaimers."
+      },
+      {
+        "name": "featureInfoTemplate",
+        "type": "FeatureInfoTemplateTraits",
+        "description": "A template object for formatting content in feature info panel"
+      },
+      {
+        "name": "showStringIfPropertyValueIsNull",
+        "type": "string",
+        "description": "If the value of a property is null or undefined, show the specified string as the value of the property. Otherwise, the property name will not be listed at all."
+      },
+      {
+        "name": "maximumShownFeatureInfos",
+        "type": "number",
+        "description": "The maximum number of \"feature infos\" that can be displayed in feature info panel."
+      },
+      {
+        "name": "preferredViewerMode",
+        "type": "string",
+        "description": "The preferred viewer mode for this item - either '2d' '3d' or '3dsmooth'. If this dataset is used as a basemap then we automatically switch the viewer to the preferred mode. However the user can still switch to another mode, so this preference is not strongly enforced."
+      },
+      {
+        "name": "opacity",
+        "type": "number",
+        "default": 1,
+        "description": "The opacity of the item."
+      },
+      {
+        "name": "disableOpacityControl",
+        "type": "boolean",
+        "description": "When true, the user will be unable to change the opacity of the item"
+      },
+      {
+        "name": "editing",
+        "type": "EditorTraits",
+        "description": "Editor traits"
+      },
+      {
+        "name": "search",
+        "type": "ItemSearchTraits",
+        "description": "Item search configuration"
+      },
+      {
+        "name": "shadows",
+        "type": "string",
+        "default": "NONE",
+        "description": "Determines whether the tileset casts or receives shadows from each light source."
+      },
+      {
+        "name": "showShadowUi",
+        "type": "boolean",
+        "default": true,
+        "description": "Determines whether the shadow UI component will be shown on the workbench item"
+      },
+      {
+        "name": "splitDirection",
+        "type": "number",
+        "description": "The side of the splitter to display this imagery layer on. Defaults to both sides."
+      },
+      {
+        "name": "disableSplitter",
+        "type": "boolean",
+        "description": "If true, splitter funcitonality will be hidden for this model."
+      },
+      {
+        "name": "origin",
+        "type": "LatLonHeightTraits",
+        "description": "The origin of the model, expressed as a longitude and latitude in degrees and a height in meters. If this property is specified, the model's axes will have X pointing East, Y pointing North, and Z pointing Up. If not specified, the model is located in the Earth-Centered Earth-Fixed frame."
+      },
+      {
+        "name": "rotation",
+        "type": "HeadingPitchRollTraits",
+        "description": "The rotation of the model expressed as heading, pitch and roll in the local frame of reference. Defaults to zero rotation."
+      },
+      {
+        "name": "scale",
+        "type": "number",
+        "description": "The scale factor to apply to the model"
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The base URL of the file or service."
+      },
+      {
+        "name": "forceProxy",
+        "type": "boolean",
+        "description": "Force the default proxy to be used for all network requests."
+      },
+      {
+        "name": "cacheDuration",
+        "type": "string",
+        "description": "The cache duration to use for proxied URLs for this catalog member. If undefined, proxied URLs are effectively cachable forever. The duration is expressed as a Varnish-like duration string, such as '1d' (one day) or '10000s' (ten thousand seconds)."
+      }
+    ],
+    "InfoSectionTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the section."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the section, in Markdown and HTML format. Set this property to null to remove this section entirely."
+      },
+      {
+        "name": "contentAsObject",
+        "type": "any",
+        "description": "The content of the section which is a JSON object. Set this property to null to remove this section entirely."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if this info section showing (not collapsed)."
+      }
+    ],
+    "ShortReportTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the section."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the section."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if this short report section showing."
+      }
+    ],
+    "MetadataUrlTraits": [
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The metadata URL of the file or service."
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "description": "Title used for metadata URL button."
+      }
+    ],
+    "DataUrlTraits": [
+      {
+        "name": "type",
+        "type": "string",
+        "description": "Type of data URL. This value will be used to provide context or instruction on how to use the data URL. For example wcs will provide a link to WCS docs.\nCurrent supported values are:\n- wfs = A Web Feature Service (WFS) base URL\n- wcs = A Web Coverage Service (WCS) base URL\n- wfs-complete = A complete, ready-to-use link to download features from a WCS server\n-  wcs-complete = A complete, ready-to-use link to download features from a WFS server\n-  direct = Direct URL to dataset (this is the default if no type is specified)\n-  none = Hide data URL"
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The metadata URL of the file or service."
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "description": "Title used for metadata URL button."
+      }
+    ],
+    "EnumDimensionTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "Dimension ID"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Dimension name (human-readable)"
+      },
+      {
+        "name": "options",
+        "type": "DimensionOptionTraits[]",
+        "description": "Dimension options"
+      },
+      {
+        "name": "selectedId",
+        "type": "string",
+        "description": "Selected Option's ID"
+      },
+      {
+        "name": "allowUndefined",
+        "type": "boolean",
+        "description": "Allow dimension to be undefined"
+      },
+      {
+        "name": "disable",
+        "type": "boolean",
+        "description": "Hides dimension"
+      }
+    ],
+    "DimensionOptionTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "Option ID"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Option name (human-readable)"
+      },
+      {
+        "name": "value",
+        "type": "any",
+        "description": "Value (if this is undefined, id will be used)"
+      }
+    ],
+    "OptionsTraits": [
+      {
+        "name": "maximumScreenSpaceError",
+        "type": "number",
+        "description": "The maximum screen space error used to drive level of detail refinement."
+      },
+      {
+        "name": "maximumNumberOfLoadedTiles",
+        "type": "number",
+        "description": ""
+      },
+      {
+        "name": "pointCloudShading",
+        "type": "PointCloudShadingTraits",
+        "description": "Point cloud shading parameters"
+      },
+      {
+        "name": "showCreditsOnScreen",
+        "type": "boolean",
+        "description": "Whether to display the credits of this tileset on screen."
+      },
+      {
+        "name": "asynchronouslyLoadImagery",
+        "type": "boolean",
+        "default": true,
+        "description": "When true, Cesium does not wait for the draped imagery layers to load before the tileset mesh is rendered. This means while the imagery is being loaded the original tile texture will be shown."
+      },
+      {
+        "name": "dynamicScreenSpaceErrorDensity",
+        "type": "number",
+        "description": "Density used to adjust the dynamic screen space error, similar to fog density."
+      },
+      {
+        "name": "dynamicScreenSpaceErrorFactor",
+        "type": "number",
+        "description": "A factor used to increase the screen space error of tiles for the dynamic screen space error optimization."
+      },
+      {
+        "name": "dynamicScreenSpaceErrorHeightFalloff",
+        "type": "number",
+        "description": "A ratio of the tileset's height that determines the height at which the dynamic screen space error optimization has the maximum effect."
+      },
+      {
+        "name": "cacheBytes",
+        "type": "number",
+        "description": "The size (in bytes) to which the tile cache will be trimmed if not needed for the current view. This is the modern replacement for the now-removed maximumNumberOfLoadedTiles option."
+      },
+      {
+        "name": "maximumCacheOverflowBytes",
+        "type": "number",
+        "description": "The maximum additional memory (in bytes) to allow for cache headroom, if more than cacheBytes are needed for the current view."
+      },
+      {
+        "name": "skipLevelOfDetail",
+        "type": "boolean",
+        "description": "Optimization option. Determines if level of detail skipping should be applied during the tileset traversal, allowing the renderer to skip levels of the tree rather than always refining one level at a time. Not tied to the quality slider - this is a traversal-algorithm choice, not a fidelity trade-off, so enabling it should generally help regardless of the current quality tier."
+      },
+      {
+        "name": "baseScreenSpaceError",
+        "type": "number",
+        "description": "The screen space error that must be reached before skipping levels of detail. Only used when skipLevelOfDetail is true."
+      },
+      {
+        "name": "skipScreenSpaceErrorFactor",
+        "type": "number",
+        "description": "Defines how much must the screen space error be improved before a tile is no longer skipped in the level-of-detail traversal. Only used when skipLevelOfDetail is true."
+      },
+      {
+        "name": "skipLevels",
+        "type": "number",
+        "description": "The minimum number of levels to skip when loading tiles during the level-of-detail traversal. Only used when skipLevelOfDetail is true."
+      },
+      {
+        "name": "immediatelyLoadDesiredLevelOfDetail",
+        "type": "boolean",
+        "description": "Determines whether the tileset should load the desired level of detail immediately, bypassing the level-of-detail skipping optimization entirely, trading more upfront bandwidth for reaching full detail faster. Only used when skipLevelOfDetail is true."
+      },
+      {
+        "name": "loadSiblings",
+        "type": "boolean",
+        "description": "Determines whether siblings of visible tiles are always downloaded during traversal, so panning to reveal them doesn't need a fresh request. Only has an effect when skipLevelOfDetail is true - setting it on a dataset that doesn't also enable skipLevelOfDetail will silently do nothing."
+      },
+      {
+        "name": "cullRequestsWhileMoving",
+        "type": "boolean",
+        "description": "Optimization option. Don't request tiles that will likely be unused when they come back because the camera is moving. Already defaults to true in Cesium; expose here for the rare dataset that needs different behaviour."
+      },
+      {
+        "name": "cullRequestsWhileMovingMultiplier",
+        "type": "number",
+        "description": "Optimization option. Multiplier used in culling requests while moving. Larger is more aggressive culling, smaller less aggressive culling."
+      },
+      {
+        "name": "preloadWhenHidden",
+        "type": "boolean",
+        "description": "Preload tiles when tileset.show is false. Loads tiles as if the tileset is visible but does not render them."
+      },
+      {
+        "name": "cullWithChildrenBounds",
+        "type": "boolean",
+        "description": "Optimization option. Whether to cull tiles using the union of their children bounding volumes. Note: this is only read once, when the tileset is first created - it cannot be changed on an already-loaded tileset without reloading it."
+      }
+    ],
+    "PointCloudShadingTraits": [
+      {
+        "name": "attenuation",
+        "type": "boolean",
+        "description": "Perform point attenuation based on geometric error."
+      },
+      {
+        "name": "geometricErrorScale",
+        "type": "number",
+        "description": "Scale to be applied to each tile's geometric error."
+      }
+    ],
+    "FilterTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "A name for the filter"
+      },
+      {
+        "name": "property",
+        "type": "string",
+        "description": "The name of the feature property to filter"
+      },
+      {
+        "name": "minimumValue",
+        "type": "number",
+        "description": "Minimum value of the property"
+      },
+      {
+        "name": "maximumValue",
+        "type": "number",
+        "description": "Minimum value of the property"
+      },
+      {
+        "name": "minimumShown",
+        "type": "number",
+        "description": "The lowest value the property can have if it is to be shown"
+      },
+      {
+        "name": "maximumShown",
+        "type": "number",
+        "description": "The largest value the property can have if it is to be shown"
+      }
+    ],
+    "ClippingPlaneCollectionTraits": [
+      {
+        "name": "enabled",
+        "type": "boolean",
+        "default": true,
+        "description": "Determines whether the clipping planes are active."
+      },
+      {
+        "name": "unionClippingRegions",
+        "type": "boolean",
+        "description": "If true, a region will be clipped if it is on the outside of any plane in the collection. Otherwise, a region will only be clipped if it is on the outside of every plane."
+      },
+      {
+        "name": "edgeWidth",
+        "type": "number",
+        "description": "The width, in pixels, of the highlight applied to the edge along which an object is clipped."
+      },
+      {
+        "name": "edgeColor",
+        "type": "string",
+        "description": "The color applied to highlight the edge along which an object is clipped."
+      },
+      {
+        "name": "planes",
+        "type": "ClippingPlaneDefinitionTraits[]",
+        "description": "An array of ClippingPlane objects used to selectively disable rendering on the outside of each plane."
+      },
+      {
+        "name": "modelMatrix",
+        "type": "number[]",
+        "description": "The 4x4 transformation matrix specifying an additional transform relative to the clipping planes original coordinate system."
+      }
+    ],
+    "ClippingPlaneDefinitionTraits": [
+      {
+        "name": "distance",
+        "type": "number",
+        "description": "The shortest distance from the origin to the plane. The sign of distance determines which side of the plane the origin is on. If distance is positive, the origin is in the half-space in the direction of the normal; if negative, the origin is in the half-space opposite to the normal; if zero, the plane passes through the origin."
+      },
+      {
+        "name": "normal",
+        "type": "number[]",
+        "description": "The plane's normal (normalized)."
+      }
+    ],
+    "ClippingBoxTraits": [
+      {
+        "name": "position",
+        "type": "LatLonHeightTraits",
+        "description": "Latitude, longitude and height of the clipping box. When not set, the box is positioned at the center of the screen."
+      },
+      {
+        "name": "enableFeature",
+        "type": "boolean",
+        "default": true,
+        "description": "Set false to completely disable clipping box feature for the item."
+      },
+      {
+        "name": "clipModel",
+        "type": "boolean",
+        "description": "Applies clipping when true."
+      },
+      {
+        "name": "showClippingBox",
+        "type": "boolean",
+        "default": true,
+        "description": "Shows a 3D box and associated UI for editing the clip volume."
+      },
+      {
+        "name": "keepBoxAboveGround",
+        "type": "boolean",
+        "default": true,
+        "description": "When true, prevents the box from going underground."
+      },
+      {
+        "name": "dimensions",
+        "type": "ClippingBoxDimensionTraits",
+        "description": "The length, width and height of the clipping box. When not set, the box will be 1/3rd the screen size."
+      },
+      {
+        "name": "clipDirection",
+        "type": "string",
+        "default": "inside",
+        "description": "Whether to clip the model outside of the box or inside. When this value is \"outside\", everything outside the box is clipped and when the value is \"inside\", everything inside the box is clipped. Default value is \"inside\""
+      },
+      {
+        "name": "size",
+        "type": "BoxSizeTraits",
+        "description": "Length, width and height of the box"
+      },
+      {
+        "name": "rotation",
+        "type": "HeadingPitchRollTraits",
+        "description": "Rotation specified as heading, pitch and roll in degrees."
+      },
+      {
+        "name": "cornerPointsStyle",
+        "type": "CornerPointsStyleTraits",
+        "description": "Corner points styling"
+      }
+    ],
+    "LatLonHeightTraits": [
+      {
+        "name": "latitude",
+        "type": "number",
+        "description": "Latitude in degrees"
+      },
+      {
+        "name": "longitude",
+        "type": "number",
+        "description": "Longitude in degrees"
+      },
+      {
+        "name": "height",
+        "type": "number",
+        "description": "Height above ellipsoid in metres"
+      }
+    ],
+    "ClippingBoxDimensionTraits": [
+      {
+        "name": "length",
+        "type": "number",
+        "description": "Length of the clipping box (along the x-axis)."
+      },
+      {
+        "name": "width",
+        "type": "number",
+        "description": "Width of the clipping box (along the y-axis)."
+      },
+      {
+        "name": "height",
+        "type": "number",
+        "description": "Height of the clipping box."
+      }
+    ],
+    "BoxSizeTraits": [
+      {
+        "name": "length",
+        "type": "string",
+        "description": "Length of the box"
+      },
+      {
+        "name": "width",
+        "type": "string",
+        "description": "Length of the box"
+      },
+      {
+        "name": "height",
+        "type": "string",
+        "description": "Length of the box"
+      }
+    ],
+    "HeadingPitchRollTraits": [
+      {
+        "name": "heading",
+        "type": "number",
+        "description": "Heading in degrees"
+      },
+      {
+        "name": "pitch",
+        "type": "number",
+        "description": "Pitch in degrees"
+      },
+      {
+        "name": "roll",
+        "type": "number",
+        "description": "Roll in degrees"
+      }
+    ],
+    "CornerPointsStyleTraits": [
+      {
+        "name": "pixelSize",
+        "type": "number",
+        "description": "Pixel size of the corner point"
+      },
+      {
+        "name": "color",
+        "type": "string",
+        "description": "Corner point color. Can be any valid CSS color string."
+      }
+    ],
+    "LegendTraits": [
+      {
+        "name": "title",
+        "type": "string",
+        "description": "A title to be displayed above the legend."
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The URL of the legend image. If the URL suffix isn't one of the following png|jpg|jpeg|gif|svg, then urlMimeType must be defined - otherwise a hyperlink will be shown."
+      },
+      {
+        "name": "imageScaling",
+        "type": "number",
+        "default": 1,
+        "description": "Scaling of the legend. For example, a high DPI legend may have scaling = 0.5, so it will be scaled down 50%"
+      },
+      {
+        "name": "urlMimeType",
+        "type": "string",
+        "description": "The MIME type of the URL legend image. For example \"image/png\""
+      },
+      {
+        "name": "items",
+        "type": "LegendItemTraits[]",
+        "description": ""
+      },
+      {
+        "name": "backgroundColor",
+        "type": "string",
+        "description": "Apply background color to entire legend. This can be useful if legend is transparent and clashes with Terria colours. This will override legendBackgroundColor."
+      }
+    ],
+    "LegendItemTraits": [
+      {
+        "name": "title",
+        "type": "string",
+        "description": "The title to display next to this legend item."
+      },
+      {
+        "name": "multipleTitles",
+        "type": "string",
+        "description": "Multiple titles to display next to this legend item."
+      },
+      {
+        "name": "maxMultipleTitlesShowed",
+        "type": "string",
+        "default": "10",
+        "description": "Maximum number of multiple titles to display next to this legend item. (Default is 10)"
+      },
+      {
+        "name": "titleAbove",
+        "type": "string",
+        "description": "The title to display above this legend item, i.e. marking the top of a box on the legend."
+      },
+      {
+        "name": "titleBelow",
+        "type": "string",
+        "description": "The title to display below this legend item, i.e. marking the bottom of a box on the legend."
+      },
+      {
+        "name": "color",
+        "type": "string",
+        "description": "The CSS color to display for this item. This property is ignored if Legend URL is specified."
+      },
+      {
+        "name": "outlineColor",
+        "type": "string",
+        "description": "The CSS color with which to outline this item."
+      },
+      {
+        "name": "outlineWidth",
+        "type": "number",
+        "description": "The width of outline in pixels"
+      },
+      {
+        "name": "outlineStyle",
+        "type": "string",
+        "description": "The style of outline using CSS outline-style values. Eg 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset'"
+      },
+      {
+        "name": "multipleColors",
+        "type": "string[]",
+        "description": "Multiple colors to show with this item in a grid arrangement."
+      },
+      {
+        "name": "imageUrl",
+        "type": "string",
+        "description": "The URL of an image to display with this item."
+      },
+      {
+        "name": "marker",
+        "type": "string",
+        "description": "Maki marker ID to display with this item (eg \"circle\")."
+      },
+      {
+        "name": "rotation",
+        "type": "number",
+        "description": "The degrees to rotate legend item."
+      },
+      {
+        "name": "addSpacingAbove",
+        "type": "boolean",
+        "description": "True to add a bit of extra spacing above this item in order to separate it visually from the rest of the legend."
+      },
+      {
+        "name": "imageHeight",
+        "type": "number",
+        "default": 20,
+        "description": "The height of the legend image."
+      },
+      {
+        "name": "imageWidth",
+        "type": "number",
+        "default": 20,
+        "description": "The width of the legend image."
+      }
+    ],
+    "RectangleTraits": [
+      {
+        "name": "west",
+        "type": "number",
+        "description": "The westernmost longitude in degrees."
+      },
+      {
+        "name": "south",
+        "type": "number",
+        "description": "The southernmost longitude in degrees."
+      },
+      {
+        "name": "east",
+        "type": "number",
+        "description": "The easternmost longitude in degrees."
+      },
+      {
+        "name": "north",
+        "type": "number",
+        "description": "The northernmost longitude in degrees."
+      },
+      {
+        "name": "position",
+        "type": "VectorTraits",
+        "description": "Position of the camera in the Earth-centered Fixed frame in meters."
+      },
+      {
+        "name": "direction",
+        "type": "VectorTraits",
+        "description": "The look direction of the camera in the Earth-centered Fixed frame."
+      },
+      {
+        "name": "up",
+        "type": "VectorTraits",
+        "description": "The up vector direction of the camera in the Earth-centered Fixed frame."
+      }
+    ],
+    "VectorTraits": [
+      {
+        "name": "x",
+        "type": "number",
+        "description": "X component of vector in the Earth-centered Fixed frame."
+      },
+      {
+        "name": "y",
+        "type": "number",
+        "description": "Y component of vector in the Earth-centered Fixed frame."
+      },
+      {
+        "name": "z",
+        "type": "number",
+        "description": "Z component of vector in the Earth-centered Fixed frame."
+      }
+    ],
+    "IdealZoomTraits": [
+      {
+        "name": "lookAt",
+        "type": "LookAtTraits",
+        "description": "Parameters for camera to look at a target."
+      },
+      {
+        "name": "camera",
+        "type": "CameraTraits",
+        "description": "Use camera position, direction and up if fully defined. Otherwise use rectangle if fully defined."
+      }
+    ],
+    "LookAtTraits": [
+      {
+        "name": "targetLongitude",
+        "type": "number",
+        "description": "Target longitude on the WGS84 ellipsoid in degrees"
+      },
+      {
+        "name": "targetLatitude",
+        "type": "number",
+        "description": "Target latitude on the WGS84 ellipsoid in degrees"
+      },
+      {
+        "name": "targetHeight",
+        "type": "number",
+        "default": 100,
+        "description": "Target height in meters. Treat it as camera height. A positive value is above the WGS84 ellipsoid. Default to 100 meters."
+      },
+      {
+        "name": "heading",
+        "type": "number",
+        "description": "Heading in degrees. Treat it as camera bearing. North is 0. A positive value rotates clockwise, negative anti-clockwise. Default to 0."
+      },
+      {
+        "name": "pitch",
+        "type": "number",
+        "default": 45,
+        "description": "Pitch in degrees. Treat it as camera pitch. A positive value is to look down, negative up. Default to 45."
+      },
+      {
+        "name": "range",
+        "type": "number",
+        "default": 500,
+        "description": "The range in meters. It is the distance between the target position and camera position projected onto the local plane. Not negative and default to 500."
+      }
+    ],
+    "CameraTraits": [
+      {
+        "name": "position",
+        "type": "VectorTraits",
+        "description": "Position of the camera in the Earth-centered Fixed frame in meters."
+      },
+      {
+        "name": "direction",
+        "type": "VectorTraits",
+        "description": "The look direction of the camera in the Earth-centered Fixed frame."
+      },
+      {
+        "name": "up",
+        "type": "VectorTraits",
+        "description": "The up vector direction of the camera in the Earth-centered Fixed frame."
+      },
+      {
+        "name": "west",
+        "type": "number",
+        "description": "The westernmost longitude in degrees."
+      },
+      {
+        "name": "south",
+        "type": "number",
+        "description": "The southernmost longitude in degrees."
+      },
+      {
+        "name": "east",
+        "type": "number",
+        "description": "The easternmost longitude in degrees."
+      },
+      {
+        "name": "north",
+        "type": "number",
+        "description": "The northernmost longitude in degrees."
+      }
+    ],
+    "InitialMessageTraits": [
+      {
+        "name": "title",
+        "type": "string",
+        "description": "The title of the message."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the message."
+      },
+      {
+        "name": "key",
+        "type": "string",
+        "description": "Identifier. If multiple messages with the same key are triggered, only the first will be displayed."
+      },
+      {
+        "name": "confirmation",
+        "type": "boolean",
+        "description": "Whether the message requires confirmation."
+      },
+      {
+        "name": "confirmText",
+        "type": "string",
+        "description": "If confirmation is true, the text to put on the confirmation button."
+      },
+      {
+        "name": "width",
+        "type": "number",
+        "description": "Width of the message."
+      },
+      {
+        "name": "height",
+        "type": "number",
+        "description": "Height of the message."
+      },
+      {
+        "name": "showAsToast",
+        "type": "boolean",
+        "description": "Show the initial message as a toast"
+      },
+      {
+        "name": "toastVisibleDuration",
+        "type": "number",
+        "description": "Time in seconds after which the toast will be dismissed. If undefined, user must take action."
+      }
+    ],
+    "FeatureInfoTemplateTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "A mustache template string for formatting name"
+      },
+      {
+        "name": "template",
+        "type": "string",
+        "description": "A Mustache template string for formatting description"
+      },
+      {
+        "name": "showFeatureInfoDownloadWithTemplate",
+        "type": "boolean",
+        "description": "Show feature info download if a template has been provided. If no template is provided, then download will always show."
+      },
+      {
+        "name": "partials",
+        "type": "any",
+        "description": "An object, mapping partial names to a template string. Defines the partials used in Template."
+      },
+      {
+        "name": "formats",
+        "type": "any",
+        "description": "An object, mapping field names to formatting options."
+      }
+    ],
+    "EditorTraits": [
+      {
+        "name": "isEditable",
+        "type": "boolean",
+        "description": "Indicates whether we can edit some aspect of the model item like its visibility or color"
+      },
+      {
+        "name": "isTransformable",
+        "type": "boolean",
+        "description": "Indicates whether we can rotate/translate/scale the model"
+      }
+    ],
+    "ItemSearchTraits": [
+      {
+        "name": "providerType",
+        "type": "string",
+        "description": "The type of the search provider."
+      },
+      {
+        "name": "providerOptions",
+        "type": "any",
+        "description": "Options for the search provider."
+      },
+      {
+        "name": "resultTemplate",
+        "type": "string",
+        "description": "Template string to format the item result. You can pass a mustache template and refer to variables in {@ItemSearchResult.properties}. The template can also have HTML markup or markdown formatting."
+      },
+      {
+        "name": "highlightColor",
+        "type": "string",
+        "description": "A color to use for highlighting the selected result. Defaults to {@HighlightColorTraits.highlightColor} or {@Terria.baseMapContrastColor}"
+      },
+      {
+        "name": "parameters",
+        "type": "SearchParameterTraits[]",
+        "description": "Search parameter configurations"
+      }
+    ],
+    "SearchParameterTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "ID of the search parameter"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "A human readable name for the search parameter"
+      },
+      {
+        "name": "queryOptions",
+        "type": "any",
+        "description": "Options used when querying the parameter, these options will be passed to the index used for querying the parameter."
+      }
+    ]
+  }
+}
