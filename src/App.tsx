@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { listWmsConfigs, loadWmsConfig, saveWmsConfig, type WmsConfig, type WmsConfigSummary } from "./api";
 import { EditorContext, type EditorContextValue } from "./form/context";
 import { fieldId, traitMatches } from "./form/paths";
 import { TraitField } from "./form/TraitField";
@@ -10,23 +11,36 @@ import { ROOT_CLASS, rootTraits, sections, totalTraitCount, wmsTraits } from "./
 import "./App.css";
 
 const STORAGE_KEY = "tlm.wms.draft";
+const RECORD_KEY = "tlm.wms.record";
 
-function loadDraft(): JsonObject {
+/** The database config the draft was loaded from or last saved to. */
+type SavedRecord = Pick<WmsConfig, "id" | "version" | "name">;
+
+function loadStored<T>(key: string, accept: (v: unknown) => v is T, fallback: T): T {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    return isPlainObject(parsed) ? parsed : {};
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
+    return accept(parsed) ? parsed : fallback;
   } catch {
-    return {};
+    return fallback;
   }
 }
 
-function saveDraft(item: JsonObject) {
+function store(key: string, value: unknown) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(item));
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // Storage unavailable (private mode etc.); the draft just won't persist.
   }
 }
+
+const loadDraft = () => loadStored<JsonObject>(STORAGE_KEY, isPlainObject, {});
+const loadRecord = () =>
+  loadStored<SavedRecord | null>(
+    RECORD_KEY,
+    (v): v is SavedRecord => isPlainObject(v) && typeof v.id === "string" && typeof v.version === "number",
+    null,
+  );
 
 const toTerriaJson = (item: JsonObject) => ({ type: "wms", ...item });
 
@@ -42,8 +56,13 @@ export default function App() {
   const [showIssues, setShowIssues] = useState(false);
   const [importing, setImporting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [record, setRecord] = useState<SavedRecord | null>(loadRecord);
+  const [opening, setOpening] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ level: "ok" | "error"; text: string } | null>(null);
 
-  useEffect(() => saveDraft(item), [item]);
+  useEffect(() => store(STORAGE_KEY, item), [item]);
+  useEffect(() => store(RECORD_KEY, record), [record]);
 
   const update = useCallback((path: Path, value: unknown) => {
     setItem((prev) => (setIn(prev, path, value) as JsonObject | undefined) ?? {});
@@ -130,11 +149,31 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const reset = () => {
-    if (Object.keys(item).length && !confirm("Clear all fields and start a new WMS item?")) return;
-    setItem({});
+  const replaceItem = (next: JsonObject, nextRecord: SavedRecord | null) => {
+    setItem(next);
+    setRecord(nextRecord);
     setDraftErrors({});
     setCapabilities(null);
+    setSaveMessage(null);
+  };
+
+  const reset = () => {
+    if (Object.keys(item).length && !confirm("Clear all fields and start a new WMS item?")) return;
+    replaceItem({}, null);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const saved = await saveWmsConfig(item, record ?? undefined);
+      setRecord({ id: saved.id, version: saved.version, name: saved.name });
+      setSaveMessage({ level: "ok", text: `Saved version ${saved.version}` });
+    } catch (e) {
+      setSaveMessage({ level: "error", text: (e as Error).message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -154,11 +193,24 @@ export default function App() {
             <button type="button" className={`status ${errorCount ? "error" : warningCount ? "warning" : "ok"}`} onClick={() => setShowIssues(!showIssues)}>
               {errorCount || warningCount ? `${errorCount} errors · ${warningCount} warnings` : "Valid"}
             </button>
+            {saveMessage && <span className={`save-message ${saveMessage.level}`}>{saveMessage.text}</span>}
+            <button type="button" className="btn" onClick={() => setOpening(true)}>
+              Open
+            </button>
             <button type="button" className="btn" onClick={() => setImporting(true)}>
               Import JSON
             </button>
             <button type="button" className="btn" onClick={reset}>
               New
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={saving || errorCount > 0}
+              title={errorCount ? "Fix errors before saving" : record ? `Update “${record.name}” in the database` : "Save as a new config in the database"}
+              onClick={save}
+            >
+              {saving ? "Saving…" : record ? "Save" : "Save new"}
             </button>
           </div>
         </header>
@@ -266,9 +318,19 @@ export default function App() {
           <ImportDialog
             onClose={() => setImporting(false)}
             onImport={(obj) => {
-              setDraftErrors({});
-              setItem(obj);
+              replaceItem(obj, null);
               setImporting(false);
+            }}
+          />
+        )}
+
+        {opening && (
+          <OpenDialog
+            onClose={() => setOpening(false)}
+            onOpen={(config) => {
+              if (Object.keys(item).length && !confirm(`Replace the current form with “${config.name}”?`)) return;
+              replaceItem(config.item, { id: config.id, version: config.version, name: config.name });
+              setOpening(false);
             }}
           />
         )}
@@ -320,6 +382,60 @@ function ImportDialog({ onClose, onImport }: { onClose: () => void; onImport: (i
           </button>
           <button type="button" className="btn primary" disabled={!text.trim()} onClick={submit}>
             Import
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OpenDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (config: WmsConfig) => void }) {
+  const [configs, setConfigs] = useState<WmsConfigSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    listWmsConfigs()
+      .then(setConfigs)
+      .catch((e: Error) => setError(e.message));
+  }, []);
+
+  const open = async (id: string) => {
+    setLoadingId(id);
+    setError(null);
+    try {
+      onOpen(await loadWmsConfig(id));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="open-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="open-title">Open a saved WMS config</h2>
+        {!configs && !error && <p className="hint">Loading…</p>}
+        {configs?.length === 0 && <p className="hint">No WMS configs saved yet.</p>}
+        {configs && configs.length > 0 && (
+          <ul className="config-list">
+            {configs.map((c) => (
+              <li key={c.id}>
+                <button type="button" disabled={loadingId !== null} onClick={() => open(c.id)}>
+                  <strong>{c.name}</strong>
+                  <span className="hint">
+                    {c.terriaId && <code>{c.terriaId}</code>} {c.url} · v{c.version} · {new Date(c.updatedAt).toLocaleString()}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {error && <p className="issues-inline error">{error}</p>}
+        <div className="modal-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
           </button>
         </div>
       </div>

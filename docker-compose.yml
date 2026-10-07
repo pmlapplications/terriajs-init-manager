@@ -1,0 +1,43 @@
+# App + PostgreSQL for local testing.
+#
+#   docker compose up --build        app on http://localhost:3000
+#   docker compose up db             database only, for `npm run dev` / `npm run dev:api`
+#
+# db/migrations runs automatically, but only when the data volume is empty.
+# The volume is named so test datasets can be swapped without losing any:
+#
+#   DB_VOLUME=tlm-db-scratch docker compose up    use (or create) another dataset
+#   docker compose down -v                        delete the current volume to start fresh
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-terria}
+      POSTGRES_USER: ${POSTGRES_USER:-terria}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-terria}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-terria}:${POSTGRES_PASSWORD:-terria}@db:5432/${POSTGRES_DB:-terria}
+      PORT: 3000
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+    name: ${DB_VOLUME:-terria-layer-manager-db}

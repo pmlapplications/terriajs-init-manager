@@ -50,6 +50,10 @@
 .status.warning { background: var(--warning-soft); color: var(--warning); }
 .status.error { background: var(--error-soft); color: var(--error); }
 
+.save-message { font-size: 12px; }
+.save-message.ok { color: var(--ok); }
+.save-message.error { color: var(--error); }
+
 .issue-panel {
   max-height: 30vh;
   overflow: auto;
@@ -618,6 +622,38 @@ fieldset.field > legend + * {
 .modal h2 {
   margin: 0 0 4px;
   font-size: 16px;
+}
+
+.config-list {
+  max-height: 50vh;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.config-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.config-list button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.config-list .hint {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .modal-actions {
