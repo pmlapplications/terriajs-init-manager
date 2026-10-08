@@ -1,0 +1,449 @@
+{
+  "type": "esri-group",
+  "model": "ArcGisCatalogGroup",
+  "source": "https://docs.terria.io/guide/connecting-to-data/catalog-type-details/esri-group/",
+  "root": "ArcGisCatalogGroupTraits",
+  "classes": {
+    "ArcGisCatalogGroupTraits": [
+      {
+        "name": "token",
+        "type": "string",
+        "description": "Token to use for ArcGiS REST API requests."
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the catalog item."
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "description": "The description of the catalog item. Markdown and HTML may be used."
+      },
+      {
+        "name": "hideDefaultDescription",
+        "type": "boolean",
+        "description": "If true, then no generic default description will be displayed if description is undefined."
+      },
+      {
+        "name": "nameInCatalog",
+        "type": "string",
+        "description": "The name of the item to be displayed in the catalog, if it is different from the one to display in the workbench."
+      },
+      {
+        "name": "info",
+        "type": "InfoSectionTraits[]",
+        "description": "Human-readable information about this dataset."
+      },
+      {
+        "name": "infoSectionOrder",
+        "type": "string[]",
+        "description": "An array of section titles defining the display order of info sections. If this property is not defined, {@link DataPreviewSections}'s DEFAULT_SECTION_ORDER is used"
+      },
+      {
+        "name": "isOpenInWorkbench",
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the item in the workbench open or collapsed."
+      },
+      {
+        "name": "shortReport",
+        "type": "string",
+        "description": "A short report to show on the now viewing tab."
+      },
+      {
+        "name": "shortReportSections",
+        "type": "ShortReportTraits[]",
+        "description": "A list of collapsible sections of the short report"
+      },
+      {
+        "name": "isExperiencingIssues",
+        "type": "boolean",
+        "description": "Whether the catalog item is experiencing issues which may cause its data to be unavailable"
+      },
+      {
+        "name": "hideSource",
+        "type": "boolean",
+        "description": "Indicates that the source of this data should be hidden from the UI (obviously this isn't super-secure as you can just look at the network requests)."
+      },
+      {
+        "name": "metadataUrls",
+        "type": "MetadataUrlTraits[]",
+        "description": "Metadata URLs to show in data catalog."
+      },
+      {
+        "name": "dataUrls",
+        "type": "DataUrlTraits[]",
+        "description": "Data URLs to show in data catalog."
+      },
+      {
+        "name": "dataCustodian",
+        "type": "string",
+        "description": "Gets or sets a description of the custodian of this data item."
+      },
+      {
+        "name": "modelDimensions",
+        "type": "EnumDimensionTraits[]",
+        "description": "This provides ability to set model JSON through SelectableDimensions (a dropdown). When an option is selected, the value property will be used to call updateModelFromJson(). All string properties support Mustache templates (with the catalog member as context)"
+      },
+      {
+        "name": "disableAboutData",
+        "type": "boolean",
+        "description": "Disables the 'About Data' button in the workbench."
+      },
+      {
+        "name": "shareable",
+        "type": "boolean",
+        "default": true,
+        "description": "True (default) if this catalog member may be included in share links. False to exclude it from share links."
+      },
+      {
+        "name": "workbenchControlFlags",
+        "type": "any",
+        "description": "Flags for enabling or disabling workbench controls."
+      },
+      {
+        "name": "excludeMembers",
+        "type": "string[]",
+        "description": "An array of strings of excluded group and item names (or ids). A group or item name (or id) that appears in this list will not be shown to the user. This is case-insensitive and will also apply to all child/nested groups"
+      },
+      {
+        "name": "includeMembersRegex",
+        "type": "string",
+        "description": "A regular expression that is matched against the member names and ids. Only members (groups and items) that match against the regular expression will be shown to the user. This is case-insensitive and will only apply to the first level of members (not in nested groups). This is applied before excludeMembers."
+      },
+      {
+        "name": "isOpen",
+        "type": "boolean",
+        "description": "True if this group is open and its contents are visible; otherwise, false."
+      },
+      {
+        "name": "mergeGroupsByName",
+        "type": "boolean",
+        "description": "Merge member groups by name."
+      },
+      {
+        "name": "sortMembersBy",
+        "type": "string",
+        "description": "Sort members by the given property/trait. For example name, will sort all members by alphabetically"
+      },
+      {
+        "name": "members",
+        "type": "any",
+        "description": "The members of this group."
+      },
+      {
+        "name": "displayGroup",
+        "type": "boolean",
+        "description": "Allow adding all members to the workbench with one click. Show Add All / Remove All button"
+      },
+      {
+        "name": "itemProperties",
+        "type": "any",
+        "description": "Sets traits on group member items (note - will not set traits to sub-groups). This applies to all nested group members (eg members in sub-groups). Also see itemPropertiesByType and itemPropertiesByIds.\nItem properties will be set in the following order (highest to lowest priority) itemPropertiesByIds, itemPropertiesByType, itemProperties."
+      },
+      {
+        "name": "itemPropertiesByType",
+        "type": "ItemPropertiesByTypeTraits[]",
+        "description": "Sets traits on group member items by model type (eg csv or geojson). This applies to all nested group members (eg members in sub-groups). Only one itemProperties can be specified per type.\nItem properties will be set in the following order (highest to lowest priority) itemPropertiesByIds, itemPropertiesByType, itemProperties."
+      },
+      {
+        "name": "itemPropertiesByIds",
+        "type": "ItemPropertiesByIdTraits[]",
+        "description": "Sets traits on group member items by model ID. This applies to all nested group members (eg members in sub-groups). Only one itemProperties can be specified per id.\nItem properties will be set in the following order (highest to lowest priority) itemPropertiesByIds, itemPropertiesByType, itemProperties."
+      },
+      {
+        "name": "legends",
+        "type": "LegendTraits[]",
+        "description": "The legends to display on the workbench."
+      },
+      {
+        "name": "legendBackgroundColor",
+        "type": "string",
+        "description": "Apply background color to all legends. This can be useful if legends are transparent and clash with Terria colours"
+      },
+      {
+        "name": "hideLegendInWorkbench",
+        "type": "boolean",
+        "description": "Whether the legend is hidden in the workbench for this catalog member."
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The base URL of the file or service."
+      },
+      {
+        "name": "forceProxy",
+        "type": "boolean",
+        "description": "Force the default proxy to be used for all network requests."
+      },
+      {
+        "name": "cacheDuration",
+        "type": "string",
+        "default": "1d",
+        "description": "The cache duration to use for proxied URLs for this catalog member. If undefined, proxied URLs are effectively cachable forever. The duration is expressed as a Varnish-like duration string, such as '1d' (one day) or '10000s' (ten thousand seconds)."
+      }
+    ],
+    "InfoSectionTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the section."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the section, in Markdown and HTML format. Set this property to null to remove this section entirely."
+      },
+      {
+        "name": "contentAsObject",
+        "type": "any",
+        "description": "The content of the section which is a JSON object. Set this property to null to remove this section entirely."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if this info section showing (not collapsed)."
+      }
+    ],
+    "ShortReportTraits": [
+      {
+        "name": "name",
+        "type": "string",
+        "description": "The name of the section."
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "description": "The content of the section."
+      },
+      {
+        "name": "show",
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates if this short report section showing."
+      }
+    ],
+    "MetadataUrlTraits": [
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The metadata URL of the file or service."
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "description": "Title used for metadata URL button."
+      }
+    ],
+    "DataUrlTraits": [
+      {
+        "name": "type",
+        "type": "string",
+        "description": "Type of data URL. This value will be used to provide context or instruction on how to use the data URL. For example wcs will provide a link to WCS docs.\nCurrent supported values are:\n- wfs = A Web Feature Service (WFS) base URL\n- wcs = A Web Coverage Service (WCS) base URL\n- wfs-complete = A complete, ready-to-use link to download features from a WCS server\n-  wcs-complete = A complete, ready-to-use link to download features from a WFS server\n-  direct = Direct URL to dataset (this is the default if no type is specified)\n-  none = Hide data URL"
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The metadata URL of the file or service."
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "description": "Title used for metadata URL button."
+      }
+    ],
+    "EnumDimensionTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "Dimension ID"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Dimension name (human-readable)"
+      },
+      {
+        "name": "options",
+        "type": "DimensionOptionTraits[]",
+        "description": "Dimension options"
+      },
+      {
+        "name": "selectedId",
+        "type": "string",
+        "description": "Selected Option's ID"
+      },
+      {
+        "name": "allowUndefined",
+        "type": "boolean",
+        "description": "Allow dimension to be undefined"
+      },
+      {
+        "name": "disable",
+        "type": "boolean",
+        "description": "Hides dimension"
+      }
+    ],
+    "DimensionOptionTraits": [
+      {
+        "name": "id",
+        "type": "string",
+        "description": "Option ID"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Option name (human-readable)"
+      },
+      {
+        "name": "value",
+        "type": "any",
+        "description": "Value (if this is undefined, id will be used)"
+      }
+    ],
+    "ItemPropertiesByTypeTraits": [
+      {
+        "name": "type",
+        "type": "string",
+        "description": "The type of model to apply itemProperties to. This must be defined."
+      },
+      {
+        "name": "itemProperties",
+        "type": "any",
+        "description": "Sets traits on group member items of specified type. This applies to all nested group members (eg members in sub-groups)"
+      }
+    ],
+    "ItemPropertiesByIdTraits": [
+      {
+        "name": "ids",
+        "type": "string[]",
+        "description": "The IDs of models to apply itemProperties to."
+      },
+      {
+        "name": "itemProperties",
+        "type": "any",
+        "description": "Sets traits on group member items of specified id. This applies to all nested group members (eg members in sub-groups)"
+      }
+    ],
+    "LegendTraits": [
+      {
+        "name": "title",
+        "type": "string",
+        "description": "A title to be displayed above the legend."
+      },
+      {
+        "name": "url",
+        "type": "string",
+        "description": "The URL of the legend image. If the URL suffix isn't one of the following png|jpg|jpeg|gif|svg, then urlMimeType must be defined - otherwise a hyperlink will be shown."
+      },
+      {
+        "name": "imageScaling",
+        "type": "number",
+        "default": 1,
+        "description": "Scaling of the legend. For example, a high DPI legend may have scaling = 0.5, so it will be scaled down 50%"
+      },
+      {
+        "name": "urlMimeType",
+        "type": "string",
+        "description": "The MIME type of the URL legend image. For example \"image/png\""
+      },
+      {
+        "name": "items",
+        "type": "LegendItemTraits[]",
+        "description": ""
+      },
+      {
+        "name": "backgroundColor",
+        "type": "string",
+        "description": "Apply background color to entire legend. This can be useful if legend is transparent and clashes with Terria colours. This will override legendBackgroundColor."
+      }
+    ],
+    "LegendItemTraits": [
+      {
+        "name": "title",
+        "type": "string",
+        "description": "The title to display next to this legend item."
+      },
+      {
+        "name": "multipleTitles",
+        "type": "string",
+        "description": "Multiple titles to display next to this legend item."
+      },
+      {
+        "name": "maxMultipleTitlesShowed",
+        "type": "string",
+        "default": "10",
+        "description": "Maximum number of multiple titles to display next to this legend item. (Default is 10)"
+      },
+      {
+        "name": "titleAbove",
+        "type": "string",
+        "description": "The title to display above this legend item, i.e. marking the top of a box on the legend."
+      },
+      {
+        "name": "titleBelow",
+        "type": "string",
+        "description": "The title to display below this legend item, i.e. marking the bottom of a box on the legend."
+      },
+      {
+        "name": "color",
+        "type": "string",
+        "description": "The CSS color to display for this item. This property is ignored if Legend URL is specified."
+      },
+      {
+        "name": "outlineColor",
+        "type": "string",
+        "description": "The CSS color with which to outline this item."
+      },
+      {
+        "name": "outlineWidth",
+        "type": "number",
+        "description": "The width of outline in pixels"
+      },
+      {
+        "name": "outlineStyle",
+        "type": "string",
+        "description": "The style of outline using CSS outline-style values. Eg 'dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset'"
+      },
+      {
+        "name": "multipleColors",
+        "type": "string[]",
+        "description": "Multiple colors to show with this item in a grid arrangement."
+      },
+      {
+        "name": "imageUrl",
+        "type": "string",
+        "description": "The URL of an image to display with this item."
+      },
+      {
+        "name": "marker",
+        "type": "string",
+        "description": "Maki marker ID to display with this item (eg \"circle\")."
+      },
+      {
+        "name": "rotation",
+        "type": "number",
+        "description": "The degrees to rotate legend item."
+      },
+      {
+        "name": "addSpacingAbove",
+        "type": "boolean",
+        "description": "True to add a bit of extra spacing above this item in order to separate it visually from the rest of the legend."
+      },
+      {
+        "name": "imageHeight",
+        "type": "number",
+        "default": 20,
+        "description": "The height of the legend image."
+      },
+      {
+        "name": "imageWidth",
+        "type": "number",
+        "default": 20,
+        "description": "The width of the legend image."
+      }
+    ]
+  }
+}

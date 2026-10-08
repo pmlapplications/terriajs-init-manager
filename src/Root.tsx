@@ -1,24 +1,25 @@
 // Login gate and page switching. Nothing but the login form renders until the
 // server confirms a session; the API enforces the same rule.
 //
-// Routes: #/item/<type> edits a catalog item of that type (#/ is the WMS
-// editor), #/users manages users.
+// Routes: #/ lists all stored catalog items and groups, #/item/<type> and
+// #/group/<type> edit a catalog item or group of that type, #/users manages users.
 
 import { useEffect, useRef, useState } from "react";
-import { currentUser, logout, UNAUTHORIZED_EVENT, type User } from "./api";
+import { currentUser, loadConfig, logout, UNAUTHORIZED_EVENT, type MemberListEntry, type User } from "./api";
 import App from "./App";
-import { clearDraft, hasDraft } from "./drafts";
+import { CatalogPage } from "./CatalogPage";
+import { clearDraft, hasDraft, loadRecord, saveDraft, saveDraftMembers, saveRecord } from "./drafts";
 import { LoginPage } from "./LoginPage";
-import { itemTypes, loadModel, shortModelName, type CatalogModel } from "./terria/catalog-ui";
+import { groupTypes, itemTypes, kindOf, loadModel, typeLabel, type CatalogModel, type ItemType } from "./terria/catalog-ui";
 import { UsersPage } from "./UsersPage";
 import "./App.css";
 
-type Route = { page: "item"; type: string } | { page: "users" };
+type Route = { page: "catalog" } | { page: "item"; type: string } | { page: "users" };
 
 function currentRoute(): Route {
   if (location.hash === "#/users") return { page: "users" };
-  const type = /^#\/item\/([\w-]+)$/.exec(location.hash)?.[1];
-  return { page: "item", type: type ?? "wms" };
+  const type = /^#\/(?:item|group)\/([\w-]+)$/.exec(location.hash)?.[1];
+  return type ? { page: "item", type } : { page: "catalog" };
 }
 
 function useRoute() {
@@ -31,7 +32,7 @@ function useRoute() {
   return route;
 }
 
-const modelName = (type: string) => shortModelName(itemTypes.find((t) => t.type === type)?.model ?? type);
+const editorHash = (type: string) => `#/${kindOf(type)}/${type}`;
 
 export default function Root() {
   // undefined while the session is being checked.
@@ -70,15 +71,33 @@ export default function Root() {
       clearDraft(type);
       setGeneration((g) => g + 1);
     }
-    location.hash = `#/item/${type}`;
+    location.hash = editorHash(type);
+  };
+
+  const openMember = async (entry: MemberListEntry) => {
+    const type = entry.type;
+    if (hasDraft(type) && loadRecord(type)?.id !== entry.id && !confirm(`Replace the current ${type} form with “${entry.name}”?`)) return;
+    try {
+      const config = await loadConfig(entry.kind, type, entry.id);
+      saveDraft(type, config.item);
+      saveDraftMembers(type, config.members ?? []);
+      saveRecord(type, { id: config.id, version: config.version, name: config.name });
+      setGeneration((g) => g + 1);
+      location.hash = editorHash(type);
+    } catch (e) {
+      alert(`Could not open “${entry.name}”: ${(e as Error).message}`);
+    }
   };
 
   return (
     <>
       <nav className="page-nav" aria-label="Pages">
+        <a href="#/" aria-current={route.page === "catalog" ? "page" : undefined}>
+          Catalog items
+        </a>
         <CreateNewMenu onCreate={createNew} />
-        <a href={`#/item/${editingType}`} aria-current={route.page === "item" ? "page" : undefined}>
-          {modelName(editingType)} editor
+        <a href={editorHash(editingType)} aria-current={route.page === "item" ? "page" : undefined}>
+          {typeLabel(editingType)} editor
         </a>
         <a href="#/users" aria-current={route.page === "users" ? "page" : undefined}>
           Users
@@ -90,10 +109,22 @@ export default function Root() {
           Log out
         </button>
       </nav>
-      {route.page === "users" ? <UsersPage currentUser={user} /> : <ItemEditor type={route.type} generation={generation} />}
+      {route.page === "users" ? (
+        <UsersPage currentUser={user} />
+      ) : route.page === "catalog" ? (
+        <CatalogPage onOpen={openMember} />
+      ) : (
+        <ItemEditor type={route.type} generation={generation} />
+      )}
     </>
   );
 }
+
+// The plain group, whose members are picked here, comes first.
+const menuSections: { title: string; types: ItemType[] }[] = [
+  { title: "Items", types: itemTypes },
+  { title: "Groups", types: [...groupTypes].sort((a, b) => Number(b.type === "group") - Number(a.type === "group")) },
+];
 
 function CreateNewMenu({ onCreate }: { onCreate: (type: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -121,23 +152,30 @@ function CreateNewMenu({ onCreate }: { onCreate: (type: string) => void }) {
         Create New <span aria-hidden="true">▾</span>
       </button>
       {open && (
-        <ul className="nav-menu-list" aria-label="Catalog item types">
-          {itemTypes.map((t) => (
-            <li key={t.type}>
-              <button
-                type="button"
-                title={t.model}
-                onClick={() => {
-                  setOpen(false);
-                  onCreate(t.type);
-                }}
-              >
-                <span>{shortModelName(t.model)}</span>
-                <code>{t.type}</code>
-              </button>
-            </li>
+        <div className="nav-menu-list">
+          {menuSections.map(({ title, types }) => (
+            <section key={title}>
+              <h3>{title}</h3>
+              <ul aria-label={title}>
+                {types.map((t) => (
+                  <li key={t.type}>
+                    <button
+                      type="button"
+                      title={t.model}
+                      onClick={() => {
+                        setOpen(false);
+                        onCreate(t.type);
+                      }}
+                    >
+                      <span>{typeLabel(t.type)}</span>
+                      <code>{t.type}</code>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

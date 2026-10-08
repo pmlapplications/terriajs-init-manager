@@ -7,6 +7,7 @@
 // dropdowns ("select") are used only where the docs list the valid values;
 // "combo" offers suggestions but accepts any text.
 
+import groupTypeIndex from "./generated/groups.json";
 import itemTypeIndex from "./generated/index.json";
 import { isPlainObject, traitKind, type JsonObject, type TraitDef, type TraitsFile } from "./traits";
 
@@ -316,6 +317,8 @@ const SECTION_LAYOUT: Section[] = [
   { id: "network", title: "Network & caching", traits: ["forceProxy", "cacheDuration"] },
 ];
 
+export type MemberKind = "item" | "group";
+
 export interface ItemType {
   /** Terria `type`, e.g. "wms". */
   type: string;
@@ -326,12 +329,28 @@ export interface ItemType {
 /** Catalog item types with generated traits, in docs order. */
 export const itemTypes: ItemType[] = itemTypeIndex;
 
-/** "WebMapServiceCatalogItem" -> "WebMapService". */
-export const shortModelName = (model: string) => model.replace(/CatalogItem$/, "");
+/** Catalog group types with generated traits, in docs order. */
+export const groupTypes: ItemType[] = groupTypeIndex;
+
+const groupTypeNames = new Set(groupTypes.map((t) => t.type));
+
+export const kindOf = (type: string): MemberKind => (groupTypeNames.has(type) ? "group" : "item");
+
+/** "WebMapServiceCatalogItem" -> "WebMapService", "CatalogGroup" -> "Catalog". */
+export const shortModelName = (model: string) => model.replace(/Catalog(Item|Group)$/, "") || model;
+
+/** Display name for any type, e.g. "WebMapService" or "WebMapService group". */
+export function typeLabel(type: string): string {
+  if (type === "group") return "Group";
+  const group = groupTypes.find((t) => t.type === type);
+  if (group) return `${shortModelName(group.model)} group`;
+  return shortModelName(itemTypes.find((t) => t.type === type)?.model ?? type);
+}
 
 /** Everything the editor needs to know about one catalog item type. */
 export interface CatalogModel {
   type: string;
+  kind: MemberKind;
   model: string;
   source: string;
   rootClass: string;
@@ -347,7 +366,9 @@ export interface CatalogModel {
 
 export function buildModel(file: TraitsFile): CatalogModel {
   const rootClass = file.root;
-  const rootTraits = [...ENTRY_TRAITS, ...file.classes[rootClass]];
+  const kind = kindOf(file.type);
+  // A group's members are links to other rows, edited apart from the form.
+  const rootTraits = [...ENTRY_TRAITS, ...file.classes[rootClass].filter((t) => !(kind === "group" && t.name === "members"))];
   const known = new Set(rootTraits.map((t) => t.name));
   const placed = new Set(SECTION_LAYOUT.flatMap((s) => s.traits));
   const layout = SECTION_LAYOUT.map((s) => ({ ...s, traits: s.traits.filter((t) => known.has(t)) })).filter((s) => s.traits.length);
@@ -355,6 +376,10 @@ export function buildModel(file: TraitsFile): CatalogModel {
   const sections = specific.length
     ? [layout[0], { id: "specific", title: `${shortModelName(file.model)} options`, traits: specific }, ...layout.slice(1)]
     : layout;
+  if (kind === "group") {
+    const options = sections.find((s) => s.id === "specific");
+    if (options) options.title = file.type === "group" ? "Group options" : `${typeLabel(file.type)} options`;
+  }
 
   const classTraits = (className: string) => (className === rootClass ? rootTraits : (file.classes[className] ?? []));
 
@@ -372,6 +397,7 @@ export function buildModel(file: TraitsFile): CatalogModel {
 
   return {
     type: file.type,
+    kind,
     model: file.model,
     source: file.source,
     rootClass,
@@ -391,7 +417,7 @@ export function loadModel(type: string): Promise<CatalogModel> {
   let model = models.get(type);
   if (!model) {
     const load = traitFiles[`./generated/${type}-traits.json`];
-    if (!load) return Promise.reject(new Error(`Unknown catalog item type "${type}"`));
+    if (!load) return Promise.reject(new Error(`Unknown catalog type "${type}"`));
     model = load().then(buildModel);
     models.set(type, model);
   }

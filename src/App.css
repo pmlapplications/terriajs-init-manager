@@ -752,15 +752,10 @@ fieldset.field > legend + * {
   top: calc(100% + 6px);
   left: 0;
   z-index: 20;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px;
   width: min(560px, calc(100vw - 32px));
   max-height: min(70vh, 640px);
   overflow: auto;
-  margin: 0;
   padding: 6px;
-  list-style: none;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -797,8 +792,26 @@ fieldset.field > legend + * {
   white-space: nowrap;
 }
 
+.nav-menu-list h3 {
+  margin: 6px 8px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nav-menu-list ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 @media (max-width: 560px) {
-  .nav-menu-list {
+  .nav-menu-list ul {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -897,4 +910,171 @@ fieldset.field > legend + * {
 
 .btn.danger:hover:not(:disabled) {
   border-color: var(--error);
+}
+
+/* --- Catalog items table ------------------------------------------------- */
+
+.page.wide-page {
+  width: min(1400px, 100%);
+}
+
+.table-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.table-filters input[type="search"] {
+  flex: 1 1 260px;
+}
+
+.table-filters select {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.table-wrap.loading,
+.members-panel .loading {
+  opacity: 0.6;
+}
+
+.catalog-table td {
+  vertical-align: top;
+}
+
+.catalog-table td:last-child {
+  text-align: left;
+  white-space: normal;
+}
+
+.sort-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sort-button:hover,
+th[aria-sort] .sort-button {
+  color: var(--text);
+}
+
+.sort-indicator {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+th[aria-sort] .sort-indicator {
+  opacity: 1;
+}
+
+.catalog-table .link {
+  font-weight: 600;
+  text-align: left;
+}
+
+.row-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.url-cell {
+  max-width: 320px;
+  font-size: 12px;
+}
+
+.empty-row {
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.pagination .actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.page-size .input {
+  width: auto;
+}
+
+/* --- Group members ------------------------------------------------------- */
+
+.members-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px 24px;
+}
+
+.members-panel h3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.member-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+ol.member-list {
+  counter-reset: member;
+}
+
+ol.member-list li::before {
+  counter-increment: member;
+  content: counter(member);
+  min-width: 1.5em;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.member-label {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.member-label .hint {
+  font-size: 12px;
+}
+
+.member-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
 }

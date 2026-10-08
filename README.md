@@ -8,6 +8,17 @@ Edits any of the catalog item types listed on
 (`wms`, `csv`, `geojson`, ...) and produces its init file JSON. Pick a type from **Create New**
 in the top menu.
 
+It also edits the [catalog groups](https://docs.terria.io/guide/connecting-to-data/catalog-groups/)
+(`group`, `wms-group`, ...), listed under **Groups** in **Create New**. Every group has a
+**Members** section where you search the saved items and groups and pick which to include, in
+order. The search only offers types the group may contain: a plain `group` takes any item or
+group, while e.g. a `wms-group` takes `wms` items and other `wms-group`s. The rules are the
+`group_member_type` table (`db/migrations/004_group_member_types.sql`).
+
+The landing page (**Catalog items**) lists every saved item and group in a paged table. Search
+matches name, Terria id, URL and description; filter by kind, type or published state, and click a
+column header to sort by it. Click a name to open it in the editor.
+
 ## Requirements
 
 Node 20.19+ or 22.12+ (`nvm use` picks up `.nvmrc`).
@@ -30,11 +41,12 @@ npm run generate:traits  # refresh trait metadata for every item type from docs.
 
 | File | Role |
 |---|---|
-| `scripts/generate-traits.mjs` | Reads the Terria docs page for a type and writes every traits table to `src/terria/generated/<type>-traits.json`. `--all` does every type on the catalog items page and writes `index.json`. |
+| `scripts/generate-traits.mjs` | Reads the Terria docs page for a type and writes every traits table to `src/terria/generated/<type>-traits.json`. `--all` does every type on the catalog items and catalog groups pages and writes `index.json` (items) and `groups.json` (groups). |
 | `src/terria/catalog-ui.ts` | What the docs only say in prose: dropdown values, number ranges, widgets, and section grouping. Shared by all types; traits not placed in a section appear in a "<Type> options" section after Basics. Each type's traits are loaded on demand. |
 | `src/terria/validate.ts` | Validates the whole item (types, allowed values, ranges, formats, cross-field rules). Also used on imported JSON. |
 | `src/terria/capabilities.ts` | Reads WMS GetCapabilities to offer the server's layers, styles and extent (WMS only). |
 | `src/form/` | Generic form renderer driven by the trait metadata. |
+| `src/MembersPanel.tsx` | A group's member list and the search for items and groups to add. |
 
 Unset fields are left out of the JSON so Terria's defaults apply. Each type's current draft is
 kept in browser storage; **Save** writes it to the database and **Open** loads a saved config.
@@ -82,11 +94,12 @@ npm run user:create                                   # against DATABASE_URL
 docker compose exec app node server/create-user.ts    # inside the Docker stack
 ```
 
-Migrations only run automatically on an empty volume. To add `003_users.sql` to an existing
-database:
+Migrations only run automatically on an empty volume. To add a newer one (e.g. `003_users.sql`,
+`004_group_member_types.sql`) to an existing database:
 
 ```bash
 docker compose exec -T db psql -U terria -d terria < db/migrations/003_users.sql
+docker compose exec -T db psql -U terria -d terria < db/migrations/004_group_member_types.sql
 ```
 
 ### API
@@ -102,11 +115,19 @@ In production (`NODE_ENV=production`) it also serves `dist/`.w
 | `GET` | `/api/users` | List users. |
 | `POST` | `/api/users` | Create a user: `{ "email", "firstName", "lastName", "password" }`. |
 | `DELETE` | `/api/users/:id` | Delete a user and end their sessions. |
+| `GET` | `/api/members` | One page of items and groups of every type: `{ items, total, page, pageSize }`. Query `q` (search), `kind` (`item`/`group`), `type` (comma-separated), `memberOf` (a group type: only types it may contain), `published` (`true`/`false`), `sort` (`name`, `type`, `terriaId`, `url`, `isPublished`, `version`, `updatedAt`, `updatedBy`), `dir` (`asc`/`desc`), `page`, `pageSize` (max 200). |
 | `GET` | `/api/items/:type` | List saved configs of a catalog item type, e.g. `/api/items/wms` (no item bodies). |
 | `GET` | `/api/items/:type/:id` | Load one config; `item` is the catalog JSON without `type`. |
 | `POST` | `/api/items/:type` | Create a config from a catalog item. |
 | `PUT` | `/api/items/:type/:id` | Update a config. Body `{ "version", "item" }`; returns 409 if `version` is stale. |
+| `GET` | `/api/groups/:type` | List saved configs of a catalog group type, e.g. `/api/groups/group`. |
+| `GET` | `/api/groups/:type/:id` | Load one group; `item` is the group JSON without `type` or `members`, and `members` lists its members in order. |
+| `GET` | `/api/groups/:type/member-types` | The types a group of this type may contain. |
+| `POST` | `/api/groups/:type` | Create a group. Body `{ "item", "members" }`, where `members` is an ordered array of catalog member ids. |
+| `PUT` | `/api/groups/:type/:id` | Update a group. Body `{ "version", "item", "members" }`; leave out `members` to keep the current ones. |
 
 Items are stored as `catalog_member` rows: `id`, `name`, `description` and `url` go to columns,
-`shareKeys` to `catalog_member_share_key`, and every other trait to `traits`. The logged-in
+`shareKeys` to `catalog_member_share_key`, and every other trait to `traits`. Groups are stored the
+same way; their members are rows in `group_membership` (with `sort_order`), which rejects a member
+whose type `group_member_type` doesn't allow and a group that would end up inside itself. `member_json()` exports a group with its published members inlined. The logged-in
 user's email is recorded in `created_by`/`updated_by`. `src/api.ts` is the frontend client.

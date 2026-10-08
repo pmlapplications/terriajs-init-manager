@@ -1,20 +1,26 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { listItemConfigs, loadItemConfig, saveItemConfig, type ItemConfig, type ItemConfigSummary } from "./api";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { listConfigs, loadConfig, saveConfig, type ItemConfig, type ItemConfigSummary, type MemberRef } from "./api";
 import { EditorContext, type EditorContextValue } from "./form/context";
 import { fieldId, traitMatches } from "./form/paths";
 import { TraitField } from "./form/TraitField";
 import { CapabilitiesPanel } from "./form/wmsInputs";
 import type { Capabilities } from "./terria/capabilities";
 import { isPlainObject, setIn, type JsonObject, type Path } from "./terria/traits";
-import { loadDraft, loadRecord, saveDraft, saveRecord, type SavedRecord } from "./drafts";
+import { loadDraft, loadDraftMembers, loadRecord, saveDraft, saveDraftMembers, saveRecord, type SavedRecord } from "./drafts";
+import { MembersPanel } from "./MembersPanel";
 import { validateItem, type Issue } from "./terria/validate";
-import { orderLikeForm, type CatalogModel } from "./terria/catalog-ui";
+import { orderLikeForm, type CatalogModel, type MemberKind } from "./terria/catalog-ui";
 import "./App.css";
 
-/** Editor for one catalog item type. Remount (change `key`) to switch type or reload the draft. */
+// Sidebar entry for a group's member list, shown after Basics.
+const MEMBERS_SECTION = "members";
+
+/** Editor for one catalog item or group type. Remount (change `key`) to switch type or reload the draft. */
 export default function App({ model }: { model: CatalogModel }) {
   const { sections, rootTraits } = model;
+  const isGroup = model.kind === "group";
   const [item, setItem] = useState<JsonObject>(() => orderLikeForm(model, loadDraft(model.type)));
+  const [members, setMembers] = useState<MemberRef[]>(() => (isGroup ? loadDraftMembers(model.type) : []));
   const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [active, setActive] = useState(sections[0].id);
@@ -30,6 +36,7 @@ export default function App({ model }: { model: CatalogModel }) {
 
   useEffect(() => saveDraft(model.type, item), [model.type, item]);
   useEffect(() => saveRecord(model.type, record), [model.type, record]);
+  useEffect(() => saveDraftMembers(model.type, members), [model.type, members]);
 
   const update = useCallback(
     (path: Path, value: unknown) => {
@@ -80,8 +87,11 @@ export default function App({ model }: { model: CatalogModel }) {
     [model, item, update, byPath, issues, setDraftError, capabilities, filter, onlySet],
   );
 
-  const json = JSON.stringify({ type: model.type, ...item }, null, 2);
+  // Members are shown by id; an exported init file has them in full.
+  const memberIds = members.map((m) => m.terriaId ?? m.id);
+  const json = JSON.stringify({ type: model.type, ...item, ...(memberIds.length ? { members: memberIds } : {}) }, null, 2);
   const searching = filter.trim() !== "";
+  const showingMembers = isGroup && !searching && active === MEMBERS_SECTION;
   const visibleSections = searching ? sections : sections.filter((s) => s.id === active);
 
   const goTo = (issue: Issue) => {
@@ -120,8 +130,9 @@ export default function App({ model }: { model: CatalogModel }) {
     URL.revokeObjectURL(url);
   };
 
-  const replaceItem = (next: JsonObject, nextRecord: SavedRecord | null) => {
+  const replaceItem = (next: JsonObject, nextRecord: SavedRecord | null, nextMembers: MemberRef[] = []) => {
     setItem(orderLikeForm(model, next));
+    setMembers(isGroup ? nextMembers : []);
     setRecord(nextRecord);
     setDraftErrors({});
     setCapabilities(null);
@@ -129,7 +140,7 @@ export default function App({ model }: { model: CatalogModel }) {
   };
 
   const reset = () => {
-    if (Object.keys(item).length && !confirm(`Clear all fields and start a new ${model.type} item?`)) return;
+    if ((Object.keys(item).length || members.length) && !confirm(`Clear all fields and start a new ${model.type} ${model.kind}?`)) return;
     replaceItem({}, null);
   };
 
@@ -137,8 +148,9 @@ export default function App({ model }: { model: CatalogModel }) {
     setSaving(true);
     setSaveMessage(null);
     try {
-      const saved = await saveItemConfig(model.type, item, record ?? undefined);
+      const saved = await saveConfig(model.kind, model.type, item, isGroup ? members.map((m) => m.id) : undefined, record ?? undefined);
       setRecord({ id: saved.id, version: saved.version, name: saved.name });
+      if (isGroup && saved.members) setMembers(saved.members);
       setSaveMessage({ level: "ok", text: `Saved version ${saved.version}` });
     } catch (e) {
       setSaveMessage({ level: "error", text: (e as Error).message });
@@ -214,37 +226,61 @@ export default function App({ model }: { model: CatalogModel }) {
               <input type="checkbox" checked={onlySet} onChange={(e) => setOnlySet(e.target.checked)} /> Only show set traits
             </label>
             <select className="input section-select" value={active} onChange={(e) => setActive(e.target.value)} aria-label="Section">
-              {sections.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
+              {sections.map((s, i) => (
+                <Fragment key={s.id}>
+                  <option value={s.id}>{s.title}</option>
+                  {i === 0 && isGroup && <option value={MEMBERS_SECTION}>Members ({members.length})</option>}
+                </Fragment>
               ))}
             </select>
             <ul className="section-list">
-              {sections.map((s) => {
+              {sections.map((s, i) => {
                 const set = s.traits.filter((t) => item[t] !== undefined).length;
                 const errs = issues.filter((i) => i.level === "error" && s.traits.includes(i.path.split(".")[0])).length;
                 return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      className={!searching && active === s.id ? "active" : undefined}
-                      onClick={() => {
-                        setFilter("");
-                        setActive(s.id);
-                      }}
-                    >
-                      <span>{s.title}</span>
-                      {errs > 0 && <span className="badge error">{errs}</span>}
-                      <span className="badge">{set ? `${set}/${s.traits.length}` : s.traits.length}</span>
-                    </button>
-                  </li>
+                  <Fragment key={s.id}>
+                    <li>
+                      <button
+                        type="button"
+                        className={!searching && active === s.id ? "active" : undefined}
+                        onClick={() => {
+                          setFilter("");
+                          setActive(s.id);
+                        }}
+                      >
+                        <span>{s.title}</span>
+                        {errs > 0 && <span className="badge error">{errs}</span>}
+                        <span className="badge">{set ? `${set}/${s.traits.length}` : s.traits.length}</span>
+                      </button>
+                    </li>
+                    {i === 0 && isGroup && (
+                      <li>
+                        <button
+                          type="button"
+                          className={showingMembers ? "active" : undefined}
+                          onClick={() => {
+                            setFilter("");
+                            setActive(MEMBERS_SECTION);
+                          }}
+                        >
+                          <span>Members</span>
+                          <span className="badge">{members.length}</span>
+                        </button>
+                      </li>
+                    )}
+                  </Fragment>
                 );
               })}
             </ul>
           </nav>
 
           <main className="form">
+            {showingMembers && (
+              <section className="section">
+                <h2>Members</h2>
+                <MembersPanel groupType={model.type} members={members} onChange={setMembers} groupId={record?.id ?? null} />
+              </section>
+            )}
             {visibleSections.map((s) => {
               const traits = rootTraits.filter((t) => s.traits.includes(t.name));
               const shown = traits.filter((t) => traitMatches(model, t, filter.trim()) && (!onlySet || item[t.name] !== undefined));
@@ -281,6 +317,7 @@ export default function App({ model }: { model: CatalogModel }) {
               </div>
             </div>
             {errorCount > 0 && <p className="issues-inline error">Fix {errorCount} error{errorCount > 1 ? "s" : ""} before using this JSON.</p>}
+            {memberIds.length > 0 && <p className="hint">Members are listed by id here; init files exported from the database include them in full.</p>}
             <pre className="code-block">{json}</pre>
           </aside>
         </div>
@@ -288,6 +325,7 @@ export default function App({ model }: { model: CatalogModel }) {
         {importing && (
           <ImportDialog
             type={model.type}
+            kind={model.kind}
             onClose={() => setImporting(false)}
             onImport={(obj) => {
               replaceItem(obj, null);
@@ -299,10 +337,11 @@ export default function App({ model }: { model: CatalogModel }) {
         {opening && (
           <OpenDialog
             type={model.type}
+            kind={model.kind}
             onClose={() => setOpening(false)}
             onOpen={(config) => {
-              if (Object.keys(item).length && !confirm(`Replace the current form with “${config.name}”?`)) return;
-              replaceItem(config.item, { id: config.id, version: config.version, name: config.name });
+              if ((Object.keys(item).length || members.length) && !confirm(`Replace the current form with “${config.name}”?`)) return;
+              replaceItem(config.item, { id: config.id, version: config.version, name: config.name }, config.members);
               setOpening(false);
             }}
           />
@@ -314,10 +353,12 @@ export default function App({ model }: { model: CatalogModel }) {
 
 function ImportDialog({
   type,
+  kind,
   onClose,
   onImport,
 }: {
   type: string;
+  kind: MemberKind;
   onClose: () => void;
   onImport: (item: JsonObject) => void;
 }) {
@@ -331,8 +372,9 @@ function ImportDialog({
       if (parsed.type !== undefined && parsed.type !== type) {
         throw new Error(`This editor only handles "${type}" items; got type ${JSON.stringify(parsed.type)}`);
       }
-      const { type: _type, ...rest } = parsed;
-      void _type;
+      // Inline members can't be matched to stored rows; they're picked in the Members section.
+      const { type: _type, members: _members, ...rest } = parsed;
+      void [_type, _members];
       onImport(rest);
     } catch (e) {
       setError((e as Error).message);
@@ -342,8 +384,11 @@ function ImportDialog({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="import-title" onClick={(e) => e.stopPropagation()}>
-        <h2 id="import-title">Import catalog item JSON</h2>
-        <p className="hint">Paste one <code>{type}</code> catalog item from an init file. This replaces the current form.</p>
+        <h2 id="import-title">Import catalog {kind} JSON</h2>
+        <p className="hint">
+          Paste one <code>{type}</code> catalog {kind} from an init file. This replaces the current form.
+          {kind === "group" && " Its members aren't imported."}
+        </p>
         <textarea
           className="input textarea code"
           rows={14}
@@ -370,22 +415,32 @@ function ImportDialog({
   );
 }
 
-function OpenDialog({ type, onClose, onOpen }: { type: string; onClose: () => void; onOpen: (config: ItemConfig) => void }) {
+function OpenDialog({
+  type,
+  kind,
+  onClose,
+  onOpen,
+}: {
+  type: string;
+  kind: MemberKind;
+  onClose: () => void;
+  onOpen: (config: ItemConfig) => void;
+}) {
   const [configs, setConfigs] = useState<ItemConfigSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    listItemConfigs(type)
+    listConfigs(kind, type)
       .then(setConfigs)
       .catch((e: Error) => setError(e.message));
-  }, [type]);
+  }, [kind, type]);
 
   const open = async (id: string) => {
     setLoadingId(id);
     setError(null);
     try {
-      onOpen(await loadItemConfig(type, id));
+      onOpen(await loadConfig(kind, type, id));
     } catch (e) {
       setError((e as Error).message);
     } finally {

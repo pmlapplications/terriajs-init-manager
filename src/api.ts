@@ -1,5 +1,7 @@
-// Client for the API in server/. Items are catalog JSON without `type`.
+// Client for the API in server/. Items and groups are catalog JSON without
+// `type` (and, for groups, without `members`, which are sent as database ids).
 
+import type { MemberKind } from "./terria/catalog-ui";
 import type { JsonObject } from "./terria/traits";
 
 export interface ItemConfigSummary {
@@ -17,8 +19,20 @@ export interface ItemConfigSummary {
   updatedAt: string;
 }
 
+/** A member of a group, enough to list it. */
+export interface MemberRef {
+  /** Database row id. */
+  id: string;
+  type: string;
+  kind: MemberKind;
+  terriaId: string | null;
+  name: string;
+}
+
 export interface ItemConfig extends ItemConfigSummary {
   item: JsonObject;
+  /** Groups only: the group's members, in order. */
+  members?: MemberRef[];
 }
 
 export class ApiError extends Error {
@@ -83,24 +97,85 @@ export const createUser = (user: NewUser) => request<User>("/users", { method: "
 
 export const deleteUser = (id: string) => request<null>(`/users/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-// --- Catalog item configs ----------------------------------------------------
+// --- Catalog item and group configs ------------------------------------------
 
-const itemsPath = (type: string, id?: string) =>
-  `/items/${encodeURIComponent(type)}${id === undefined ? "" : `/${encodeURIComponent(id)}`}`;
+const configPath = (kind: MemberKind, type: string, id?: string) =>
+  `/${kind === "group" ? "groups" : "items"}/${encodeURIComponent(type)}${id === undefined ? "" : `/${encodeURIComponent(id)}`}`;
 
-export const listItemConfigs = (type: string) => request<ItemConfigSummary[]>(itemsPath(type));
+export const listConfigs = (kind: MemberKind, type: string) => request<ItemConfigSummary[]>(configPath(kind, type));
 
-export const loadItemConfig = (type: string, id: string) => request<ItemConfig>(itemsPath(type, id));
+export const loadConfig = (kind: MemberKind, type: string, id: string) => request<ItemConfig>(configPath(kind, type, id));
 
 /**
- * Saves an item. Without `existing` a new config is created; with it, that
- * config is overwritten, failing with status 409 if it changed since `version`.
+ * Saves an item or group. Without `existing` a new config is created; with it,
+ * that config is overwritten, failing with status 409 if it changed since
+ * `version`. `members` (database ids, in order) is sent for groups only.
  */
-export function saveItemConfig(type: string, item: JsonObject, existing?: { id: string; version: number }) {
+export function saveConfig(
+  kind: MemberKind,
+  type: string,
+  item: JsonObject,
+  members: string[] | undefined,
+  existing?: { id: string; version: number },
+) {
   return existing
-    ? request<ItemConfig>(itemsPath(type, existing.id), {
+    ? request<ItemConfig>(configPath(kind, type, existing.id), {
         method: "PUT",
-        body: JSON.stringify({ version: existing.version, item }),
+        body: JSON.stringify({ version: existing.version, item, members }),
       })
-    : request<ItemConfig>(itemsPath(type), { method: "POST", body: JSON.stringify(item) });
+    : request<ItemConfig>(configPath(kind, type), {
+        method: "POST",
+        // Items post the item itself; groups post { item, members }.
+        body: JSON.stringify(kind === "group" ? { item, members } : item),
+      });
+}
+
+/** Types a group of `groupType` may contain. */
+export const listMemberTypes = (groupType: string) =>
+  request<string[]>(`/groups/${encodeURIComponent(groupType)}/member-types`);
+
+export interface MemberListEntry extends ItemConfigSummary {
+  kind: MemberKind;
+  description: string | null;
+  updatedBy: string | null;
+  /** Groups only: number of direct members. */
+  memberCount: number | null;
+}
+
+export type MemberSortKey = "name" | "type" | "terriaId" | "url" | "isPublished" | "version" | "updatedAt" | "updatedBy";
+
+export interface MemberListQuery {
+  /** Matches name, Terria id, url or description. */
+  q?: string;
+  kind?: MemberKind;
+  types?: string[];
+  /** Only types that a group of this type may contain. */
+  memberOf?: string;
+  published?: boolean;
+  sort?: MemberSortKey;
+  dir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface MemberListPage {
+  items: MemberListEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** One page of stored items and groups of every type. */
+export function listMembers(query: MemberListQuery, signal?: AbortSignal) {
+  const params = new URLSearchParams();
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.kind) params.set("kind", query.kind);
+  if (query.types?.length) params.set("type", query.types.join(","));
+  if (query.memberOf) params.set("memberOf", query.memberOf);
+  if (query.published !== undefined) params.set("published", String(query.published));
+  if (query.sort) params.set("sort", query.sort);
+  if (query.dir) params.set("dir", query.dir);
+  if (query.page) params.set("page", String(query.page));
+  if (query.pageSize) params.set("pageSize", String(query.pageSize));
+  return request<MemberListPage>(`/members?${params}`, { signal });
 }

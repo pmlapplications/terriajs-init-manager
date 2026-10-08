@@ -25,6 +25,8 @@ export async function transaction<T>(fn: (client: pg.PoolClient) => Promise<T>):
 /** Postgres error codes we map to HTTP responses. */
 export const PG_UNIQUE_VIOLATION = "23505";
 export const PG_CHECK_VIOLATION = "23514";
+/** RAISE EXCEPTION in a trigger or function. */
+export const PG_RAISE_EXCEPTION = "P0001";
 
 export const pgErrorCode = (e: unknown) =>
   typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : undefined;

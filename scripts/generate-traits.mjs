@@ -2,11 +2,12 @@
 // Builds trait metadata for Terria catalog types from their docs pages.
 //
 //   node scripts/generate-traits.mjs [type]      (default: wms)
-//   node scripts/generate-traits.mjs --all       every type on the catalog items page
+//   node scripts/generate-traits.mjs --all       every type on the catalog items and groups pages
 //
 // Writes src/terria/generated/<type>-traits.json. Each docs page has one table
 // per traits class; nested classes are referenced by name in the Type column.
-// --all also writes src/terria/generated/index.json listing the item types.
+// --all also writes src/terria/generated/index.json listing the item types and
+// groups.json listing the group types.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -99,18 +100,17 @@ async function generate(type) {
   return { type, model: title };
 }
 
-/** Item types listed on the catalog items page, as { type, model }. */
-async function listItemTypes() {
-  const html = await fetchText(`${DOCS}/catalog-items/`);
+/** Types listed on a catalog index page ("catalog-items", "catalog-groups"), as { type, model }. */
+async function listTypes(page) {
+  const html = await fetchText(`${DOCS}/${page}/`);
   const rows = [...html.matchAll(/<tr>\s*<td><a [^>]*>(.*?)<\/a><\/td>\s*<td><code>(.*?)<\/code><\/td>\s*<\/tr>/gs)];
-  if (rows.length === 0) throw new Error("No catalog item types found on the catalog items page");
+  if (rows.length === 0) throw new Error(`No catalog types found on the ${page} page`);
   return rows.map(([, model, type]) => ({ type: toText(type), model: toText(model) }));
 }
 
-await mkdir(OUT_DIR, { recursive: true });
-
-if (process.argv[2] === "--all") {
-  const types = await listItemTypes();
+/** Generates every type on an index page and writes the list of those that worked. */
+async function generateAll(page, indexFile) {
+  const types = await listTypes(page);
   const done = [];
   const failed = [];
   for (const { type, model } of types) {
@@ -122,9 +122,16 @@ if (process.argv[2] === "--all") {
       console.error(`${type}: ${e.message}`);
     }
   }
-  await writeFile(join(OUT_DIR, "index.json"), JSON.stringify(done, null, 2) + "\n");
-  console.log(`${done.length} item types written${failed.length ? `; failed: ${failed.join(", ")}` : ""}`);
+  await writeFile(join(OUT_DIR, indexFile), JSON.stringify(done, null, 2) + "\n");
+  console.log(`${page}: ${done.length} types written${failed.length ? `; failed: ${failed.join(", ")}` : ""}`);
   if (failed.length) process.exitCode = 1;
+}
+
+await mkdir(OUT_DIR, { recursive: true });
+
+if (process.argv[2] === "--all") {
+  await generateAll("catalog-items", "index.json");
+  await generateAll("catalog-groups", "groups.json");
 } else {
   await generate(process.argv[2] ?? "wms");
 }

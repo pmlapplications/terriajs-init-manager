@@ -1,0 +1,62 @@
+[
+  {
+    "type": "esri-group",
+    "model": "ArcGisCatalogGroup"
+  },
+  {
+    "type": "esri-featureServer-group",
+    "model": "ArcGisFeatureServerCatalogGroup"
+  },
+  {
+    "type": "esri-mapServer-group",
+    "model": "ArcGisMapServerCatalogGroup"
+  },
+  {
+    "type": "arcgis-portal-group",
+    "model": "ArcGisPortalCatalogGroup"
+  },
+  {
+    "type": "group",
+    "model": "CatalogGroup"
+  },
+  {
+    "type": "ckan-group",
+    "model": "CkanCatalogGroup"
+  },
+  {
+    "type": "csw-group",
+    "model": "CswCatalogGroup"
+  },
+  {
+    "type": "opendatasoft-group",
+    "model": "OpenDataSoftCatalogGroup"
+  },
+  {
+    "type": "sdmx-group",
+    "model": "SdmxCatalogGroup"
+  },
+  {
+    "type": "socrata-group",
+    "model": "SocrataCatalogGroup"
+  },
+  {
+    "type": "thredds-group",
+    "model": "ThreddsCatalogGroup"
+  },
+  {
+    "type": "wfs-group",
+    "model": "WebFeatureServiceCatalogGroup"
+  },
+  {
+    "type": "wms-group",
+    "model": "WebMapServiceCatalogGroup"
+  },
+  {
+    "type": "wmts-group",
+    "model": "WebMapTileServiceCatalogGroup"
+  },
+  {
+    "type": "wps-getCapabilities",
+    "model": "WebProcessingServiceCatalogGroup"
+  }
+]
