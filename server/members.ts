@@ -355,7 +355,8 @@ function positiveInt(value: string | undefined, name: string, fallback: number, 
  * One page of items and groups of every type. `q` searches name, Terria id,
  * url and description; `kind` is "item" or "group" (default both); `type` is a
  * comma-separated list of types; `memberOf` limits to the types a group type
- * may contain; `published` is "true" or "false".
+ * may contain; `within` is a comma-separated list of group ids, limiting to
+ * their members at any depth; `published` is "true" or "false".
  */
 export async function listMembers(query: Record<string, string | undefined>): Promise<MemberListPage> {
   const page = positiveInt(query.page, "page", 1);
@@ -388,6 +389,18 @@ export async function listMembers(query: Record<string, string | undefined>): Pr
   if (query.memberOf) {
     params.push(query.memberOf);
     where.push(`m.type in (select member_type from group_member_type where group_type = $${params.length})`);
+  }
+  if (query.within !== undefined) {
+    const groups = query.within.split(",").filter(Boolean);
+    if (!groups.every((id) => UUID.test(id))) throw new ApiError(400, `"within" must be a comma-separated list of group ids`);
+    params.push(groups);
+    where.push(`m.id in (
+      with recursive descendants(id) as (
+        select gm.child_id from group_membership gm where gm.parent_id = any($${params.length}::uuid[])
+        union
+        select gm.child_id from group_membership gm join descendants d on gm.parent_id = d.id
+      )
+      select id from descendants)`);
   }
   if (query.published === "true" || query.published === "false") {
     params.push(query.published === "true");

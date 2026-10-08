@@ -20,6 +20,15 @@ The landing page (**Catalog items**) lists every saved item and group in a paged
 matches name, Terria id, URL and description; filter by kind, type or published state, and click a
 column header to sort by it. Click a name to open it in the editor.
 
+**Init files** builds complete [Terria init files](https://docs.terria.io/guide/customizing/initialization-files/).
+The catalog is picked from saved groups (in order; each brings its members), and the workbench from
+items inside those groups. The home and initial cameras are set by panning a Leaflet map and
+clicking **Use map view** (a `{ west, south, east, north }` box), or given as JSON for
+position/direction/up, `positionHeading` or `lookAt` views; the initial camera can also focus on the
+workbench items. Viewer mode, splitter, base maps, settings, CORS domains and the previewed item
+have fields; stories and any other top-level keys are edited as JSON. **Download JSON** gives the
+finished `<file name>.json` with published groups and items only. The map uses OpenStreetMap tiles.
+
 ## Requirements
 
 Node 20.19+ or 22.12+ (`nvm use` picks up `.nvmrc`).
@@ -47,7 +56,8 @@ npm run generate:traits  # refresh trait metadata for every item type from docs.
 | `src/terria/validate.ts` | Validates the whole item (types, allowed values, ranges, formats, cross-field rules). Also used on imported JSON. |
 | `src/terria/capabilities.ts` | Reads WMS GetCapabilities to offer the server's layers, styles and extent (WMS only). |
 | `src/form/` | Generic form renderer driven by the trait metadata. |
-| `src/MembersPanel.tsx` | A group's member list and the search for items and groups to add. |
+| `src/MembersPanel.tsx` | A group's member list and the search for items and groups to add (`MemberList` and `MemberSearch` are reused by the init file editor). |
+| `src/InitFileEditor.tsx`, `src/CameraMap.tsx` | The init file editor and its Leaflet map for camera views. |
 
 Unset fields are left out of the JSON so Terria's defaults apply. Each type's current draft is
 kept in browser storage; **Save** writes it to the database and **Open** loads a saved config.
@@ -96,11 +106,12 @@ docker compose exec app node server/create-user.ts    # inside the Docker stack
 ```
 
 Migrations only run automatically on an empty volume. To add a newer one (e.g. `003_users.sql`,
-`004_group_member_types.sql`) to an existing database:
+`004_group_member_types.sql`, `005_init_file_version.sql`) to an existing database:
 
 ```bash
 docker compose exec -T db psql -U terria -d terria < db/migrations/003_users.sql
 docker compose exec -T db psql -U terria -d terria < db/migrations/004_group_member_types.sql
+docker compose exec -T db psql -U terria -d terria < db/migrations/005_init_file_version.sql
 ```
 
 ### API
@@ -116,7 +127,7 @@ In production (`NODE_ENV=production`) it also serves `dist/`.w
 | `GET` | `/api/users` | List users. |
 | `POST` | `/api/users` | Create a user: `{ "email", "firstName", "lastName", "password" }`. |
 | `DELETE` | `/api/users/:id` | Delete a user and end their sessions. |
-| `GET` | `/api/members` | One page of items and groups of every type: `{ items, total, page, pageSize }`. Query `q` (search), `kind` (`item`/`group`), `type` (comma-separated), `memberOf` (a group type: only types it may contain), `published` (`true`/`false`), `sort` (`name`, `type`, `terriaId`, `url`, `isPublished`, `version`, `updatedAt`, `updatedBy`), `dir` (`asc`/`desc`), `page`, `pageSize` (max 200). |
+| `GET` | `/api/members` | One page of items and groups of every type: `{ items, total, page, pageSize }`. Query `q` (search), `kind` (`item`/`group`), `type` (comma-separated), `memberOf` (a group type: only types it may contain), `within` (comma-separated group ids: only their members, at any depth), `published` (`true`/`false`), `sort` (`name`, `type`, `terriaId`, `url`, `isPublished`, `version`, `updatedAt`, `updatedBy`), `dir` (`asc`/`desc`), `page`, `pageSize` (max 200). |
 | `GET` | `/api/items/:type` | List saved configs of a catalog item type, e.g. `/api/items/wms` (no item bodies). |
 | `GET` | `/api/items/:type/:id` | Load one config; `item` is the catalog JSON without `type`. |
 | `POST` | `/api/items/:type` | Create a config from a catalog item. |
@@ -126,6 +137,12 @@ In production (`NODE_ENV=production`) it also serves `dist/`.w
 | `GET` | `/api/groups/:type/member-types` | The types a group of this type may contain. |
 | `POST` | `/api/groups/:type` | Create a group. Body `{ "item", "members" }`, where `members` is an ordered array of catalog member ids. |
 | `PUT` | `/api/groups/:type/:id` | Update a group. Body `{ "version", "item", "members" }`; leave out `members` to keep the current ones. |
+| `GET` | `/api/init-files` | List init files. |
+| `GET` | `/api/init-files/:id` | Load one: `{ slug, name, description, config, catalog, workbench, version, ... }`, with `catalog` and `workbench` as member lists. |
+| `POST` | `/api/init-files` | Create one. Body `{ "slug", "name", "description", "config", "catalog", "workbench" }`: `config` holds every top-level key except `catalog` and `workbench`, which are ordered arrays of group ids and of ids of items inside those groups. |
+| `PUT` | `/api/init-files/:id` | Update one. The same body plus `version`; returns 409 if it is stale. |
+| `DELETE` | `/api/init-files/:id` | Delete one (its groups and items are kept). |
+| `GET` | `/api/init-files/:id/export` | The finished init file JSON from `export_init_file()`, published members only. Add `?download` to save it as `<slug>.json`. |
 
 Items are stored as `catalog_member` rows: `id`, `name`, `description` and `url` go to columns,
 `shareKeys` to `catalog_member_share_key`, and every other trait to `traits`. Groups are stored the

@@ -151,6 +151,8 @@ export interface MemberListQuery {
   types?: string[];
   /** Only types that a group of this type may contain. */
   memberOf?: string;
+  /** Only members of these groups (database ids), at any depth. */
+  within?: string[];
   published?: boolean;
   sort?: MemberSortKey;
   dir?: "asc" | "desc";
@@ -172,6 +174,7 @@ export function listMembers(query: MemberListQuery, signal?: AbortSignal) {
   if (query.kind) params.set("kind", query.kind);
   if (query.types?.length) params.set("type", query.types.join(","));
   if (query.memberOf) params.set("memberOf", query.memberOf);
+  if (query.within) params.set("within", query.within.join(","));
   if (query.published !== undefined) params.set("published", String(query.published));
   if (query.sort) params.set("sort", query.sort);
   if (query.dir) params.set("dir", query.dir);
@@ -179,3 +182,59 @@ export function listMembers(query: MemberListQuery, signal?: AbortSignal) {
   if (query.pageSize) params.set("pageSize", String(query.pageSize));
   return request<MemberListPage>(`/members?${params}`, { signal });
 }
+
+// --- Init files --------------------------------------------------------------
+
+export interface InitFileSummary {
+  id: string;
+  /** File name without .json. */
+  slug: string;
+  name: string;
+  description: string | null;
+  /** Number of top-level catalog groups. */
+  catalogCount: number;
+  /** Incremented on every save; send it back when updating. */
+  version: number;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+export interface InitFile extends InitFileSummary {
+  /** Every top-level init file key except catalog and workbench. */
+  config: JsonObject;
+  /** Top-level catalog groups, in order. */
+  catalog: MemberRef[];
+  /** Items added to the workbench on load, in order. */
+  workbench: MemberRef[];
+}
+
+export interface InitFileInput {
+  slug: string;
+  name: string;
+  description: string | null;
+  config: JsonObject;
+  /** Database ids of groups, in order. */
+  catalog: string[];
+  /** Database ids of items inside those groups, in order. */
+  workbench: string[];
+}
+
+const initFilePath = (id?: string) => `/init-files${id === undefined ? "" : `/${encodeURIComponent(id)}`}`;
+
+export const listInitFiles = () => request<InitFileSummary[]>(initFilePath());
+
+export const loadInitFile = (id: string) => request<InitFile>(initFilePath(id));
+
+/** Creates an init file, or overwrites `existing` (409 if it changed since `version`). */
+export const saveInitFile = (file: InitFileInput, existing?: { id: string; version: number }) =>
+  existing
+    ? request<InitFile>(initFilePath(existing.id), { method: "PUT", body: JSON.stringify({ ...file, version: existing.version }) })
+    : request<InitFile>(initFilePath(), { method: "POST", body: JSON.stringify(file) });
+
+export const deleteInitFile = (id: string) => request<null>(initFilePath(id), { method: "DELETE" });
+
+/** The finished JSON as Terria would load it (published members only). */
+export const exportInitFile = (id: string) => request<JsonObject>(`${initFilePath(id)}/export`);
+
+/** A link that downloads the finished JSON as <slug>.json. */
+export const initFileDownloadUrl = (id: string) => `/api${initFilePath(id)}/export?download`;

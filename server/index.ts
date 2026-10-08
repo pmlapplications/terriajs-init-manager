@@ -11,7 +11,7 @@
 //   DELETE /api/users/:id    delete a user (not yourself)
 //
 //   GET    /api/members           one page of items and groups of every type; query q, kind,
-//                                  type, memberOf, published, sort, dir, page, pageSize
+//                                  type, memberOf, within, published, sort, dir, page, pageSize
 //
 //   GET    /api/items/:type       list stored configs of a catalog item type (wms, csv, ...)
 //   GET    /api/items/:type/:id   load one config
@@ -23,6 +23,14 @@
 //   POST   /api/groups/:type      are { item, members } / { version, item, members } with
 //   PUT    /api/groups/:type/:id  members as an ordered array of catalog member ids
 //   GET    /api/groups/:type/member-types  types a group of this type may contain
+//
+//   GET    /api/init-files             list init files
+//   GET    /api/init-files/:id         load one: { slug, name, description, config, catalog, workbench, ... }
+//   POST   /api/init-files             create; body { slug, name, description, config, catalog, workbench }
+//                                      with catalog (groups) and workbench (items) as ordered member ids
+//   PUT    /api/init-files/:id         update; the same body plus { version }
+//   DELETE /api/init-files/:id         delete
+//   GET    /api/init-files/:id/export  the finished init file JSON; ?download to save it as <slug>.json
 
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -32,6 +40,7 @@ import { PG_CHECK_VIOLATION, PG_RAISE_EXCEPTION, PG_UNIQUE_VIOLATION, pgErrorCod
 import { ApiError } from "./errors.ts";
 import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseNewUser, sessionUser, type User } from "./users.ts";
 import { createConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
+import { createInitFile, deleteInitFile, exportInitFile, getInitFile, listInitFiles, updateInitFile } from "./init-files.ts";
 
 const app = new Hono<{ Variables: { user: User } }>();
 
@@ -123,13 +132,37 @@ for (const [kind, base] of [["item", "/api/items"], ["group", "/api/groups"]] as
   });
 }
 
+app.get("/api/init-files", async (c) => c.json(await listInitFiles()));
+
+app.get("/api/init-files/:id", async (c) => c.json(await getInitFile(c.req.param("id"))));
+
+app.post("/api/init-files", async (c) => c.json(await createInitFile(await jsonBody(c), c.var.user.email), 201));
+
+app.put("/api/init-files/:id", async (c) => {
+  const body = await jsonBody(c);
+  const { version } = (body ?? {}) as { version?: unknown };
+  if (!Number.isInteger(version)) throw new ApiError(400, `"version" must be an integer`);
+  return c.json(await updateInitFile(c.req.param("id"), version as number, body, c.var.user.email));
+});
+
+app.delete("/api/init-files/:id", async (c) => {
+  await deleteInitFile(c.req.param("id"));
+  return c.body(null, 204);
+});
+
+app.get("/api/init-files/:id/export", async (c) => {
+  const { slug, content } = await exportInitFile(c.req.param("id"));
+  if (c.req.query("download") !== undefined) c.header("Content-Disposition", `attachment; filename="${slug}.json"`);
+  return c.json(content);
+});
+
 app.notFound((c) => (c.req.path.startsWith("/api/") ? c.json({ error: "Not found" }, 404) : c.text("Not found", 404)));
 
 app.onError((e, c) => {
   if (e instanceof ApiError) return c.json({ error: e.message }, e.status);
   const code = pgErrorCode(e);
   if (code === PG_UNIQUE_VIOLATION) {
-    return c.json({ error: `Already in use by another catalog member: ${(e as { detail?: string }).detail ?? e.message}` }, 409);
+    return c.json({ error: `Already in use: ${(e as { detail?: string }).detail ?? e.message}` }, 409);
   }
   // Check constraints, and triggers such as the group cycle check.
   if (code === PG_CHECK_VIOLATION || code === PG_RAISE_EXCEPTION) return c.json({ error: e.message }, 400);
