@@ -92,6 +92,24 @@ export default function Root() {
     }
   };
 
+  // Opens an unsaved copy in the editor; "Save new" then stores it as a new
+  // config. The Terria id and share keys must be unique, so the copy has none.
+  const duplicateMember = async (entry: MemberListEntry) => {
+    const type = entry.type;
+    if (hasDraft(type) && !confirm(`Replace the current ${type} form with a copy of “${entry.name}”?`)) return;
+    try {
+      const config = await loadConfig(entry.kind, type, entry.id);
+      const { id: _id, shareKeys: _shareKeys, ...item } = config.item;
+      saveDraft(type, { ...item, name: `Copy of ${config.name}` });
+      saveDraftMembers(type, config.members ?? []);
+      saveRecord(type, null);
+      setGeneration((g) => g + 1);
+      location.hash = editorHash(type);
+    } catch (e) {
+      alert(`Could not duplicate “${entry.name}”: ${(e as Error).message}`);
+    }
+  };
+
   return (
     <>
       <nav className="page-nav" aria-label="Pages">
@@ -117,7 +135,7 @@ export default function Root() {
       {route.page === "users" ? (
         <UsersPage currentUser={user} />
       ) : route.page === "catalog" ? (
-        <CatalogPage onOpen={openMember} />
+        <CatalogPage onOpen={openMember} onDuplicate={duplicateMember} />
       ) : route.page === "new" ? (
         <NewPage onCreate={createNew} />
       ) : (

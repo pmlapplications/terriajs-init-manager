@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { listMembers, type MemberListEntry, type MemberListPage, type MemberListQuery, type MemberSortKey } from "./api";
+import { Icon } from "./Icon";
 import { groupTypes, itemTypes, typeLabel, type ItemType, type MemberKind } from "./terria/catalog-ui";
 
 interface TableState {
@@ -55,7 +56,13 @@ function storeState(state: TableState) {
   }
 }
 
-export function CatalogPage({ onOpen }: { onOpen: (member: MemberListEntry) => void }) {
+export function CatalogPage({
+  onOpen,
+  onDuplicate,
+}: {
+  onOpen: (member: MemberListEntry) => void;
+  onDuplicate: (member: MemberListEntry) => void;
+}) {
   const [state, setState] = useState(loadState);
   // The search box updates immediately; `state.q` follows after a pause in typing.
   const [search, setSearch] = useState(state.q);
@@ -207,6 +214,9 @@ export function CatalogPage({ onOpen }: { onOpen: (member: MemberListEntry) => v
                         </th>
                       );
                     })}
+                    <th>
+                      <span className="visually-hidden">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -232,11 +242,22 @@ export function CatalogPage({ onOpen }: { onOpen: (member: MemberListEntry) => v
                       <td>{item.version}</td>
                       <td title={new Date(item.updatedAt).toLocaleString()}>{new Date(item.updatedAt).toLocaleDateString()}</td>
                       <td>{item.updatedBy}</td>
+                      <td className="row-actions">
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Duplicate: open a copy in the editor to save as a new config"
+                          aria-label={`Duplicate ${item.name}`}
+                          onClick={() => onDuplicate(item)}
+                        >
+                          <Icon name="copy" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {result.items.length === 0 && (
                     <tr>
-                      <td colSpan={COLUMNS.length} className="hint empty-row">
+                      <td colSpan={COLUMNS.length + 1} className="hint empty-row">
                         {filtered ? "Nothing matches these filters." : "No catalog items or groups saved yet. Use Create New to add one."}
                       </td>
                     </tr>

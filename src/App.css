@@ -450,6 +450,11 @@ fieldset.field > legend + * {
   cursor: pointer;
 }
 
+.icon-btn svg {
+  display: block;
+  margin: auto;
+}
+
 .icon-btn:disabled {
   opacity: 0.35;
   cursor: default;
@@ -890,6 +895,19 @@ th[aria-sort] .sort-indicator {
 .catalog-table .link {
   font-weight: 600;
   text-align: left;
+}
+
+.catalog-table td.row-actions {
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .row-description {
