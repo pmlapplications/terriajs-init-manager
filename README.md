@@ -5,8 +5,9 @@ React + TypeScript, built with [Vite](https://vite.dev).
 
 Edits any of the catalog item types listed on
 [Terria's catalog items page](https://docs.terria.io/guide/connecting-to-data/catalog-items/)
-(`wms`, `csv`, `geojson`, ...) and produces its init file JSON. Pick a type from **Create New**
-in the top menu.
+(`wms`, `csv`, `geojson`, ...) and produces its init file JSON. **Create New** in the top bar opens
+a page of every type, grouped by kind of data (imagery, vector, tables, 3D, ...) with an icon each;
+pick one to start a new item. The categories and icons are set in `src/terria/type-categories.ts`.
 
 It also edits the [catalog groups](https://docs.terria.io/guide/connecting-to-data/catalog-groups/)
 (`group`, `wms-group`, ...), listed under **Groups** in **Create New**. Every group has a

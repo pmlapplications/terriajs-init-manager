@@ -1,23 +1,26 @@
 // Login gate and page switching. Nothing but the login form renders until the
 // server confirms a session; the API enforces the same rule.
 //
-// Routes: #/ lists all stored catalog items and groups, #/item/<type> and
-// #/group/<type> edit a catalog item or group of that type, #/users manages users.
+// Routes: #/ lists all stored catalog items and groups, #/new picks a type to
+// create, #/item/<type> and #/group/<type> edit a catalog item or group of that
+// type, #/users manages users.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { currentUser, loadConfig, logout, UNAUTHORIZED_EVENT, type MemberListEntry, type User } from "./api";
 import App from "./App";
 import { CatalogPage } from "./CatalogPage";
 import { clearDraft, hasDraft, loadRecord, saveDraft, saveDraftMembers, saveRecord } from "./drafts";
 import { LoginPage } from "./LoginPage";
-import { groupTypes, itemTypes, kindOf, loadModel, typeLabel, type CatalogModel, type ItemType } from "./terria/catalog-ui";
+import { NewPage } from "./NewPage";
+import { kindOf, loadModel, typeLabel, type CatalogModel } from "./terria/catalog-ui";
 import { UsersPage } from "./UsersPage";
 import "./App.css";
 
-type Route = { page: "catalog" } | { page: "item"; type: string } | { page: "users" };
+type Route = { page: "catalog" } | { page: "new" } | { page: "item"; type: string } | { page: "users" };
 
 function currentRoute(): Route {
   if (location.hash === "#/users") return { page: "users" };
+  if (location.hash === "#/new") return { page: "new" };
   const type = /^#\/(?:item|group)\/([\w-]+)$/.exec(location.hash)?.[1];
   return type ? { page: "item", type } : { page: "catalog" };
 }
@@ -95,7 +98,9 @@ export default function Root() {
         <a href="#/" aria-current={route.page === "catalog" ? "page" : undefined}>
           Catalog items
         </a>
-        <CreateNewMenu onCreate={createNew} />
+        <a href="#/new" aria-current={route.page === "new" ? "page" : undefined}>
+          Create New
+        </a>
         <a href={editorHash(editingType)} aria-current={route.page === "item" ? "page" : undefined}>
           {typeLabel(editingType)} editor
         </a>
@@ -113,71 +118,12 @@ export default function Root() {
         <UsersPage currentUser={user} />
       ) : route.page === "catalog" ? (
         <CatalogPage onOpen={openMember} />
+      ) : route.page === "new" ? (
+        <NewPage onCreate={createNew} />
       ) : (
         <ItemEditor type={route.type} generation={generation} />
       )}
     </>
-  );
-}
-
-// The plain group, whose members are picked here, comes first.
-const menuSections: { title: string; types: ItemType[] }[] = [
-  { title: "Items", types: itemTypes },
-  { title: "Groups", types: [...groupTypes].sort((a, b) => Number(b.type === "group") - Number(a.type === "group")) },
-];
-
-function CreateNewMenu({ onCreate }: { onCreate: (type: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="nav-menu" ref={ref}>
-      <button type="button" className="nav-menu-button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        Create New <span aria-hidden="true">▾</span>
-      </button>
-      {open && (
-        <div className="nav-menu-list">
-          {menuSections.map(({ title, types }) => (
-            <section key={title}>
-              <h3>{title}</h3>
-              <ul aria-label={title}>
-                {types.map((t) => (
-                  <li key={t.type}>
-                    <button
-                      type="button"
-                      title={t.model}
-                      onClick={() => {
-                        setOpen(false);
-                        onCreate(t.type);
-                      }}
-                    >
-                      <span>{typeLabel(t.type)}</span>
-                      <code>{t.type}</code>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
