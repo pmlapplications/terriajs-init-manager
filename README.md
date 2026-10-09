@@ -1,5 +1,8 @@
 # TerriaJS Init Manager (TIM)
 
+[![Tests](https://img.shields.io/github/actions/workflow/status/pmlapplications/terriajs-init-manager/ci.yml?branch=main&label=tests)](https://github.com/pmlapplications/terriajs-init-manager/actions/workflows/ci.yml?query=branch%3Amain)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fpmlapplications%2Fterriajs-init-manager%2Fbadges%2Fcoverage.json)](https://github.com/pmlapplications/terriajs-init-manager/actions/workflows/ci.yml?query=branch%3Amain)
+
 A web app for managing the catalog of a [TerriaJS](https://github.com/TerriaJS/terriajs) map:
 edit catalog items and groups of every Terria type, build complete
 [init files](https://docs.terria.io/guide/customizing/initialization-files/) from them, and

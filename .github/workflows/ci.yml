@@ -79,6 +79,38 @@ jobs:
             coverage/
           retention-days: 7
 
+  # Publishes the coverage badge data (a shields.io endpoint JSON) to the
+  # `badges` branch from the default branch; the README badge reads it.
+  coverage-badge:
+    needs: test
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-results
+      - name: Write the badge JSON
+        run: |
+          node -e '
+            const pct = require("./coverage/coverage-summary.json").total.lines.pct;
+            const color = pct >= 90 ? "brightgreen" : pct >= 80 ? "green" : pct >= 70 ? "yellowgreen" : pct >= 60 ? "yellow" : pct >= 50 ? "orange" : "red";
+            console.log(JSON.stringify({ schemaVersion: 1, label: "coverage", message: `${Math.round(pct)}%`, color }));
+          ' > "$RUNNER_TEMP/coverage.json"
+      - name: Push to the badges branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q badges && cd badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan badges
+          cp "$RUNNER_TEMP/coverage.json" .
+          git add coverage.json
+          git commit -q -m "Coverage badge for $GITHUB_SHA"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges
+
   build:
     runs-on: ubuntu-latest
     steps:
