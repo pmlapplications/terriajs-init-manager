@@ -11,7 +11,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DOCS = "https://docs.terria.io/guide/connecting-to-data";
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "terria", "generated");
@@ -23,7 +23,7 @@ const DROP_DEFAULTS = new Set(["currentTime"]);
 // id or an inline catalog member, so it is edited as JSON.
 const TYPE_ALIASES = { ModelReference: "any", "ModelReference[]": "any" };
 
-const decode = (s) =>
+export const decode = (s) =>
   s
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&#x27;/g, "'")
@@ -32,7 +32,7 @@ const decode = (s) =>
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&");
 
-const toText = (html) =>
+export const toText = (html) =>
   decode(
     html
       .replace(/<li>/g, "\n- ")
@@ -44,7 +44,7 @@ const toText = (html) =>
     .filter(Boolean)
     .join("\n");
 
-function parseDefault(raw, traitType) {
+export function parseDefault(raw, traitType) {
   if (raw === "") return undefined;
   if (traitType === "number") return Number(raw);
   if (traitType === "boolean") return raw === "true";
@@ -57,11 +57,11 @@ async function fetchText(url) {
   return res.text();
 }
 
-/** Parses one catalog type's docs page and writes its traits file. */
-async function generate(type) {
-  const url = `${DOCS}/catalog-type-details/${type}/`;
-  const html = await fetchText(url);
-
+/**
+ * Parses a catalog type's docs page into { model, root, classes }: the page
+ * title, the first (root) traits class, and every class's traits.
+ */
+export function parseTraitsPage(html, url) {
   const title = toText(html.match(/<h1[^>]*>(.*?)<\/h1>/s)?.[1] ?? "");
   const parts = html.split(/<h[2-5] id="[^"]+">(.*?)<\/h[2-5]>/s);
   const classes = {};
@@ -91,6 +91,13 @@ async function generate(type) {
     }
   }
   if (unknown.size) throw new Error(`${url}: referenced classes missing from page: ${[...unknown].join(", ")}`);
+  return { model: title, root, classes };
+}
+
+/** Parses one catalog type's docs page and writes its traits file. */
+async function generate(type) {
+  const url = `${DOCS}/catalog-type-details/${type}/`;
+  const { model: title, root, classes } = parseTraitsPage(await fetchText(url), url);
 
   const out = join(OUT_DIR, `${type}-traits.json`);
   await writeFile(out, JSON.stringify({ type, model: title, source: url, root, classes }, null, 2) + "\n");
@@ -102,7 +109,11 @@ async function generate(type) {
 
 /** Types listed on a catalog index page ("catalog-items", "catalog-groups"), as { type, model }. */
 async function listTypes(page) {
-  const html = await fetchText(`${DOCS}/${page}/`);
+  return parseTypeList(await fetchText(`${DOCS}/${page}/`), page);
+}
+
+/** The { type, model } rows of a catalog index page's table. */
+export function parseTypeList(html, page) {
   const rows = [...html.matchAll(/<tr>\s*<td><a [^>]*>(.*?)<\/a><\/td>\s*<td><code>(.*?)<\/code><\/td>\s*<\/tr>/gs)];
   if (rows.length === 0) throw new Error(`No catalog types found on the ${page} page`);
   return rows.map(([, model, type]) => ({ type: toText(type), model: toText(model) }));
@@ -127,11 +138,14 @@ async function generateAll(page, indexFile) {
   if (failed.length) process.exitCode = 1;
 }
 
-await mkdir(OUT_DIR, { recursive: true });
+// Only when run as a script, so the parsers can be imported by tests.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await mkdir(OUT_DIR, { recursive: true });
 
-if (process.argv[2] === "--all") {
-  await generateAll("catalog-items", "index.json");
-  await generateAll("catalog-groups", "groups.json");
-} else {
-  await generate(process.argv[2] ?? "wms");
+  if (process.argv[2] === "--all") {
+    await generateAll("catalog-items", "index.json");
+    await generateAll("catalog-groups", "groups.json");
+  } else {
+    await generate(process.argv[2] ?? "wms");
+  }
 }

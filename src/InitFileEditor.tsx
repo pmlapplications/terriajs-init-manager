@@ -22,6 +22,7 @@ import {
   type OutputTarget,
 } from "./api";
 import { CameraMap, type MapCamera, type Rect } from "./CameraMap";
+import { SLUG, asRect, baseMapIds, cameraMode, rectProblem, slugify, withKey, without, type CameraMode } from "./init-file";
 import { MemberList, MemberSearch } from "./MembersPanel";
 import { groupTypes, itemTypes, typeLabel } from "./terria/catalog-ui";
 import { isPlainObject, type JsonObject } from "./terria/traits";
@@ -46,55 +47,9 @@ const VIEWER_MODES = [
   { value: "2d", label: "2D (2d)" },
 ];
 
-// Ids of base maps that Terria provides by default, offered as suggestions.
-const BUILT_IN_BASE_MAPS = [
-  "basemap-positron",
-  "basemap-darkmatter",
-  "basemap-voyager",
-  "basemap-natural-earth-II",
-  "basemap-black-marble",
-  "basemap-bing-aerial-with-labels",
-  "basemap-bing-aerial",
-  "basemap-bing-roads",
-];
-
-const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 const HOME_COLOR = "#0b6bcb";
 const INITIAL_COLOR = "#d9480f";
-
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-/** A camera given as { west, south, east, north } and nothing else. */
-function asRect(value: unknown): Rect | null {
-  if (!isPlainObject(value)) return null;
-  const keys = Object.keys(value);
-  const sides = ["west", "south", "east", "north"] as const;
-  if (keys.length !== 4 || !sides.every((k) => typeof value[k] === "number")) return null;
-  return value as unknown as Rect;
-}
-
-function rectProblem(r: Rect): string | null {
-  if (r.west < -180 || r.west > 180 || r.east < -180 || r.east > 180) return "west and east must be between -180 and 180";
-  if (r.south < -90 || r.north > 90) return "south and north must be between -90 and 90";
-  if (r.south >= r.north) return "south must be less than north";
-  return null;
-}
-
-const without = <T,>(obj: Record<string, T>, keys: string[]): Record<string, T> =>
-  Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)));
-
-/** Sets or (for undefined) removes a key, keeping the object's key order. */
-function withKey(obj: JsonObject, key: string, value: unknown): JsonObject {
-  const next = { ...obj };
-  if (value === undefined) delete next[key];
-  else next[key] = value;
-  return next;
-}
 
 interface Draft {
   slug: string;
@@ -649,14 +604,6 @@ function OutputRow(props: {
   );
 }
 
-/** Ids for the base map suggestions: Terria's defaults and any extra base maps. */
-function baseMapIds(baseMaps: JsonObject): string[] {
-  const extra = Array.isArray(baseMaps.items)
-    ? baseMaps.items.map((b) => (isPlainObject(b) ? (isPlainObject(b.item) ? b.item.id : b.item) : undefined))
-    : [];
-  return [...new Set([...extra.filter((id): id is string => typeof id === "string"), ...BUILT_IN_BASE_MAPS])];
-}
-
 /** Warns when a workbench item is no longer inside the catalog groups. */
 function WorkbenchCheck({ item, catalogIds }: { item: MemberRef; catalogIds: string[] }) {
   const [inside, setInside] = useState<boolean | null>(null);
@@ -833,15 +780,6 @@ function JsonField({
       {error && <small className="issues-inline error">{error}</small>}
     </>
   );
-}
-
-type CameraMode = "unset" | "rect" | "focus" | "json";
-
-function cameraMode(value: unknown): CameraMode {
-  if (value === undefined) return "unset";
-  if (asRect(value)) return "rect";
-  if (isPlainObject(value) && value.focusWorkbenchItems === true && Object.keys(value).length === 1) return "focus";
-  return "json";
 }
 
 /** One camera: a bounding box (also set from the map), focus on the workbench, or JSON. */

@@ -1,4 +1,4 @@
--- Terria Layer Manager: core schema (PostgreSQL 14+)
+-- TerriaJS Init Manager: core schema (PostgreSQL 14+)
 --
 -- Every catalog entry (group, item, reference or function) is a row in
 -- catalog_member. The handful of traits common to all members are columns;

@@ -738,6 +738,11 @@ fieldset.field > legend + * {
   overflow-wrap: anywhere;
 }
 
+.app-version {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .page-message {
   padding: 16px;
 }

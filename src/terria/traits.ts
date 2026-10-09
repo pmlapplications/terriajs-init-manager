@@ -74,6 +74,7 @@ export function humanize(name: string): string {
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
     .split(" ")
     .map((w) => (/^(url|wms|wcs|crs|id|ncwms|html)$/i.test(w) ? w.toUpperCase().replace("NCWMS", "NcWMS") : w.toLowerCase()));
-  const label = words.join(" ");
+  // The camel-case split breaks "NcWMS" in two.
+  const label = words.join(" ").replace(/\bnc WMS\b/i, "NcWMS");
   return label.charAt(0).toUpperCase() + label.slice(1);
 }

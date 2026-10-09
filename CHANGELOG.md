@@ -1,0 +1,35 @@
+# Changelog
+
+All notable changes to TerriaJS Init Manager. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). See
+[Releasing](docs/development/releasing.md) for when and how to bump the version.
+
+## [Unreleased]
+
+## [0.1.0] - 2026-10-09
+
+First versioned release.
+
+### Added
+
+- Editor for every Terria catalog item and group type, driven by trait metadata generated from
+  docs.terria.io, with validation and WMS GetCapabilities lookups.
+- Catalog items and groups stored in PostgreSQL, with ordered group members, per-group-type
+  member rules, optimistic locking and revision history.
+- Catalog table with search, filters, sorting and paging; duplicate an item from the table.
+- Init file editor: catalog groups, workbench items, cameras set from a map, base maps, settings
+  and other top-level keys, with JSON export and download.
+- Publish and unpublish init files to `/config/<file name>.json`, and a test mode that keeps
+  `/config/test/<init file id>.json` up to date on every save.
+- Users and login sessions; `npm run user:create` for the first user.
+- Version number shown in the app and returned by `/api/health`.
+- Documentation (Sphinx, Read the Docs), a test suite (Vitest) and GitLab CI.
+
+### Fixed
+
+- Exported init files no longer contain `"workbench": null` when no workbench items are
+  published (migration `007_export_empty_workbench.sql`).
+
+[Unreleased]: https://rsg-gitlab.npm.ac.uk/pml-applications/terriajs-initialisation-manager/-/compare/v0.1.0...main
+[0.1.0]: https://rsg-gitlab.npm.ac.uk/pml-applications/terriajs-initialisation-manager/-/tags/v0.1.0

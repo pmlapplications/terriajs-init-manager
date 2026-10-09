@@ -146,6 +146,9 @@ export default function Root() {
         <span className="whoami" title={user.email}>
           {user.firstName} {user.lastName}
         </span>
+        <span className="app-version" title="TerriaJS Init Manager version">
+          v{__APP_VERSION__}
+        </span>
         <button type="button" className="btn small" onClick={signOut}>
           Log out
         </button>

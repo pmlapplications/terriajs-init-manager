@@ -26,3 +26,9 @@ dist-ssr
 
 # Init files written by the server
 /config
+
+# Tests and docs
+coverage
+junit.xml
+docs/_build
+.venv

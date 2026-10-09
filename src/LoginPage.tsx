@@ -24,7 +24,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: User) => void }) {
   return (
     <main className="login">
       <form className="card login-card" onSubmit={submit}>
-        <h1>Terria Layer Manager</h1>
+        <h1>TerriaJS Init Manager</h1>
         <p className="hint">Log in to continue.</p>
         <label className="form-row">
           <span>Email</span>
@@ -53,6 +53,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: User) => void }) {
         <button type="submit" className="btn primary" disabled={busy}>
           {busy ? "Logging in…" : "Log in"}
         </button>
+        <p className="hint app-version">Version {__APP_VERSION__}</p>
       </form>
     </main>
   );

@@ -4,3 +4,6 @@ dist
 .env
 *.log
 config
+coverage
+docs/_build
+.venv

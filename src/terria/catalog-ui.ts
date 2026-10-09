@@ -336,7 +336,7 @@ const groupTypeNames = new Set(groupTypes.map((t) => t.type));
 
 export const kindOf = (type: string): MemberKind => (groupTypeNames.has(type) ? "group" : "item");
 
-/** "WebMapServiceCatalogItem" -> "WebMapService", "CatalogGroup" -> "Catalog". */
+/** "WebMapServiceCatalogItem" -> "WebMapService"; "CatalogGroup" stays as it is. */
 export const shortModelName = (model: string) => model.replace(/Catalog(Item|Group)$/, "") || model;
 
 /** Display name for any type, e.g. "WebMapService" or "WebMapService group". */
