@@ -73,6 +73,23 @@ describe("Root", () => {
     await waitFor(() => expect(find()).toBeInTheDocument());
   });
 
+  it.each([
+    ["#/docs", "/docs/"],
+    ["#/docs/user-guide/init-files.html", "/docs/user-guide/init-files.html"],
+  ])("routes %s to the documentation", async (hash, src) => {
+    loggedIn();
+    location.hash = hash;
+    render(<Root />);
+    await waitFor(() => expect(screen.getByTitle("Documentation")).toHaveAttribute("src", src));
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("has a Docs menu item", async () => {
+    loggedIn();
+    render(<Root />);
+    expect(await screen.findByRole("link", { name: "Docs" })).toHaveAttribute("href", "#/docs");
+  });
+
   it("routes #/init-files/new to an empty init file editor", async () => {
     loggedIn();
     location.hash = "#/init-files/new";

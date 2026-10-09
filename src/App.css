@@ -738,6 +738,35 @@ fieldset.field > legend + * {
   overflow-wrap: anywhere;
 }
 
+/* The docs fill the window below the menu, however tall the menu is. */
+#root:has(> .docs-page) {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.docs-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.docs-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 16px;
+  font-size: 13px;
+}
+
+.docs-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: #fff;
+}
+
 .app-version {
   color: var(--muted);
   font-size: 12px;

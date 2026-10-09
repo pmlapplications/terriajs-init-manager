@@ -18,8 +18,8 @@ This starts two containers:
   when the data volume is empty.
 - `app`: the frontend and API on port 3000 (`APP_PORT`).
 
-Data is kept in two named volumes: the database (`DB_VOLUME`, default `terria-layer-manager-db`)
-and published init files (`CONFIG_VOLUME`, default `terria-layer-manager-config`). They survive
+Data is kept in two named volumes: the database (`DB_VOLUME`, default `terriajs-init-manager-db`)
+and published init files (`CONFIG_VOLUME`, default `terriajs-init-manager-config`). They survive
 `docker compose down` and rebuilds; `docker compose down -v` deletes them.
 
 You can keep separate datasets, for example for testing, by changing the database volume name:

@@ -19,6 +19,7 @@ export default defineConfig({
     proxy: {
       '/api': process.env.API_URL ?? 'http://localhost:3000',
       '/config': process.env.API_URL ?? 'http://localhost:3000',
+      '/docs': process.env.API_URL ?? 'http://localhost:3000',
     },
   },
   test: {

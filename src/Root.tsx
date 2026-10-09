@@ -4,12 +4,13 @@
 // Routes: #/ lists all stored catalog items and groups, #/new picks a type to
 // create, #/item/<type> and #/group/<type> edit a catalog item or group of that
 // type, #/init-files lists init files, #/init-files/new and #/init-files/<id>
-// edit one, #/users manages users.
+// edit one, #/users manages users, and #/docs/<page> shows the documentation.
 
 import { useEffect, useState } from "react";
 import { currentUser, loadConfig, logout, UNAUTHORIZED_EVENT, type MemberListEntry, type User } from "./api";
 import App from "./App";
 import { CatalogPage } from "./CatalogPage";
+import { DocsPage } from "./DocsPage";
 import { clearDraft, hasDraft, loadRecord, saveDraft, saveDraftMembers, saveRecord } from "./drafts";
 import { InitFileEditor } from "./InitFileEditor";
 import { InitFilesPage } from "./InitFilesPage";
@@ -26,12 +27,16 @@ type Route =
   | { page: "initFiles" }
   // `visit` changes on every navigation, so each visit to "new" starts afresh.
   | { page: "initFile"; id: string | null; visit: number }
-  | { page: "users" };
+  | { page: "users" }
+  // `visit` reloads the docs when the menu item is clicked while reading them.
+  | { page: "docs"; path: string; visit: number };
 
 let visits = 0;
 
 function currentRoute(): Route {
   if (location.hash === "#/users") return { page: "users" };
+  const docs = /^#\/docs(?:\/(.*))?$/.exec(location.hash);
+  if (docs) return { page: "docs", path: docs[1] ?? "", visit: ++visits };
   if (location.hash === "#/new") return { page: "new" };
   if (location.hash === "#/init-files") return { page: "initFiles" };
   const initFile = /^#\/init-files\/([\w-]+)$/.exec(location.hash)?.[1];
@@ -143,6 +148,9 @@ export default function Root() {
         <a href="#/users" aria-current={route.page === "users" ? "page" : undefined}>
           Users
         </a>
+        <a href="#/docs" aria-current={route.page === "docs" ? "page" : undefined}>
+          Docs
+        </a>
         <span className="whoami" title={user.email}>
           {user.firstName} {user.lastName}
         </span>
@@ -153,7 +161,9 @@ export default function Root() {
           Log out
         </button>
       </nav>
-      {route.page === "users" ? (
+      {route.page === "docs" ? (
+        <DocsPage key={route.visit} page={route.path} />
+      ) : route.page === "users" ? (
         <UsersPage currentUser={user} />
       ) : route.page === "catalog" ? (
         <CatalogPage onOpen={openMember} onDuplicate={duplicateMember} />

@@ -7,6 +7,13 @@ All notable changes to TerriaJS Init Manager. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A **Docs** menu item that shows this documentation inside the app, served by the server at
+  `/docs/`. The Docker image now builds the documentation (new `DOCS_DIR` setting).
+- A GitHub Actions workflow matching the GitLab CI pipeline: lint, tests, build, docs, GitHub
+  Pages and release tag checks.
+
 ## [0.1.0] - 2026-10-09
 
 First versioned release.

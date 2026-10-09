@@ -42,6 +42,13 @@ Published files go to a temporary folder, removed after the run.
 
 ## In CI
 
-GitLab CI runs the linter, the type-check, the full test suite against a PostgreSQL service, the
-production build and the docs build on every push. Test results and coverage appear in merge
-requests. See `.gitlab-ci.yml`.
+The same pipeline is set up for GitLab CI (`.gitlab-ci.yml`) and GitHub Actions
+(`.github/workflows/ci.yml`). On every push it runs the linter, the type-check, the full test suite
+against a PostgreSQL service, the production build and the docs build.
+
+- On GitLab, test results and coverage appear in merge requests.
+- On GitHub, failing tests are annotated on the changed lines, the coverage summary is shown on
+  the run's summary page, and the JUnit and coverage reports are kept as the `test-results`
+  artifact for 7 days.
+
+Both also check release tags; see [Releasing](releasing.md).

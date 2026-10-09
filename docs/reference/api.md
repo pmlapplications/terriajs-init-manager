@@ -100,6 +100,12 @@ catalogCount, version, updatedAt, updatedBy, published, test }`:
 
 Publishing doesn't change the init file's `version`.
 
+## Documentation
+
+| Method | Path | |
+|---|---|---|
+| `GET` | `/docs/...` | The built documentation, from `DOCS_DIR`. Public. `/docs` redirects to `/docs/`. Returns `404` with instructions if the docs haven't been built. |
+
 ## Published files
 
 | Method | Path | |

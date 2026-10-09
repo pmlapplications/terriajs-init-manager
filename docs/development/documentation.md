@@ -22,9 +22,14 @@ CI do.
 
 ## Where it is published
 
+- **In the app**: the **Docs** menu item shows the docs, served by the app's server at `/docs/`
+  from `DOCS_DIR`. The Docker image builds them; in development, run `npm run docs` and they
+  appear (the dev server forwards `/docs` to the API server).
 - **Read the Docs** builds the docs from `.readthedocs.yaml` when the project is connected to it.
 - **GitLab CI** builds them on every push (the `docs` job) and publishes the default branch to
   GitLab Pages (the `pages` job).
+- **GitHub Actions** does the same and publishes the default branch to GitHub Pages. In the
+  repository's settings, set **Pages → Source** to **GitHub Actions** first.
 
 The version shown in the docs comes from `package.json`.
 

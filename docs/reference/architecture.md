@@ -22,8 +22,9 @@ documents can be edited without code specific to it.
 | `src/MembersPanel.tsx` | A group's member list and the search for items and groups to add. `MemberList` and `MemberSearch` are reused by the init file editor. |
 | `src/InitFileEditor.tsx`, `src/init-file.ts` | The init file editor and its helpers. |
 | `src/CameraMap.tsx`, `src/camera.ts` | The Leaflet map for camera views, and bounding box helpers. |
+| `src/DocsPage.tsx` | Shows the documentation from `/docs/` in a frame, keeping the page being read in the address bar. |
 | `src/CatalogPage.tsx`, `src/InitFilesPage.tsx`, `src/UsersPage.tsx`, `src/NewPage.tsx` | The other pages. |
-| `src/Root.tsx` | Login gate and page routing (`#/`, `#/new`, `#/item/<type>`, `#/group/<type>`, `#/init-files`, `#/init-files/<id>`, `#/users`). |
+| `src/Root.tsx` | Login gate and page routing (`#/`, `#/new`, `#/item/<type>`, `#/group/<type>`, `#/init-files`, `#/init-files/<id>`, `#/users`, `#/docs/<page>`). |
 | `src/api.ts` | Client for the HTTP API. |
 
 ## Server

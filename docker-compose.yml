@@ -43,6 +43,6 @@ services:
 
 volumes:
   db-data:
-    name: ${DB_VOLUME:-terria-layer-manager-db}
+    name: ${DB_VOLUME:-terriajs-init-manager-db}
   config-data:
-    name: ${CONFIG_VOLUME:-terria-layer-manager-config}
+    name: ${CONFIG_VOLUME:-terriajs-init-manager-config}

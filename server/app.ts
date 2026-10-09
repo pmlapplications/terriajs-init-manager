@@ -41,7 +41,11 @@
 //
 //   GET    /config/<slug>.json          files written above; public, with CORS, so a Terria map can load them
 //   GET    /config/test/<id>.json
+//
+//   GET    /docs/...                    the built documentation (DOCS_DIR, from `npm run docs`); public
 
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
@@ -96,6 +100,18 @@ app.use("/config/*", async (c, next) => {
   c.header("Cache-Control", "no-cache");
 });
 app.get("/config/*", serveStatic({ root: CONFIG_DIR, rewriteRequestPath: (p) => p.replace(/^\/config/, "") }));
+
+// The Sphinx documentation, shown in the app's Docs page. Read at request time
+// so docs built after the server started are picked up.
+const docsDir = () => resolve(process.env.DOCS_DIR ?? "docs/_build/html");
+app.get("/docs", (c) => c.redirect("/docs/"));
+app.get("/docs/*", async (c, next) => {
+  const root = docsDir();
+  if (!existsSync(root)) {
+    return c.text("The documentation hasn't been built. Run `npm run docs:setup` and `npm run docs`.", 404);
+  }
+  return serveStatic({ root, rewriteRequestPath: (p) => p.replace(/^\/docs/, "") })(c, next);
+});
 
 app.post("/api/auth/login", async (c) => {
   const { email, password } = ((await jsonBody(c)) ?? {}) as { email?: unknown; password?: unknown };

@@ -60,7 +60,7 @@ migrations by file name, so people upgrading know to apply them.
    git push origin v0.2.0
    ```
 
-CI checks every `v*` tag: the release job fails if the tag doesn't match the version in
+CI (GitLab or GitHub) checks every `v*` tag: the release job fails if the tag doesn't match the version in
 `package.json` or if `CHANGELOG.md` has no section for it. The tests also check that the current
 version has a changelog section.
 
