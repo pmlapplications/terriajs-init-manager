@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 project = "TerriaJS Init Manager"
-author = "Plymouth Marine Laboratory"
+author = "PML Applications"
 copyright = f"{date.today().year}, {author}"
 
 # One version number, kept in package.json (see development/releasing.md).

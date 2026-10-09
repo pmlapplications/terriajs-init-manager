@@ -34,3 +34,7 @@ npm test                                           # needs the database running
 | [Development](docs/development/setup.md), [testing](docs/development/testing.md) | Working on the code |
 | [Releasing](docs/development/releasing.md) | Version numbers and making a release |
 | [Changelog](CHANGELOG.md) | What changed in each version |
+
+## License
+
+[MIT](LICENSE) © 2026 [PML Applications](https://pml-applications.co.uk)
