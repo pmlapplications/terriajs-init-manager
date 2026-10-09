@@ -39,5 +39,5 @@ First versioned release.
 - Exported init files no longer contain `"workbench": null` when no workbench items are
   published (migration `007_export_empty_workbench.sql`).
 
-[Unreleased]: https://rsg-gitlab.npm.ac.uk/pml-applications/terriajs-initialisation-manager/-/compare/v0.1.0...main
-[0.1.0]: https://rsg-gitlab.npm.ac.uk/pml-applications/terriajs-initialisation-manager/-/tags/v0.1.0
+[Unreleased]: https://github.com/pmlapplications/terriajs-initialisation-manager/-/compare/v0.1.0...main
+[0.1.0]: https://github.com/pmlapplications/terriajs-initialisation-manager/-/tags/v0.1.0
