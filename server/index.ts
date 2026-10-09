@@ -31,6 +31,13 @@
 //   PUT    /api/init-files/:id         update; the same body plus { version }
 //   DELETE /api/init-files/:id         delete
 //   GET    /api/init-files/:id/export  the finished init file JSON; ?download to save it as <slug>.json
+//   POST   /api/init-files/:id/publish  publish: write the finished JSON to CONFIG_DIR/<slug>.json
+//   DELETE /api/init-files/:id/publish  unpublish: delete that file
+//   POST   /api/init-files/:id/test     turn test mode on: write CONFIG_DIR/test/<id>.json, rewritten on every save
+//   DELETE /api/init-files/:id/test     turn test mode off: delete that file
+//
+//   GET    /config/<slug>.json          files written above; public, with CORS, so a Terria map can load them
+//   GET    /config/test/<id>.json
 
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -40,7 +47,18 @@ import { PG_CHECK_VIOLATION, PG_RAISE_EXCEPTION, PG_UNIQUE_VIOLATION, pgErrorCod
 import { ApiError } from "./errors.ts";
 import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseNewUser, sessionUser, type User } from "./users.ts";
 import { createConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
-import { createInitFile, deleteInitFile, exportInitFile, getInitFile, listInitFiles, updateInitFile } from "./init-files.ts";
+import {
+  CONFIG_DIR,
+  createInitFile,
+  deleteInitFile,
+  exportInitFile,
+  getInitFile,
+  listInitFiles,
+  publishInitFile,
+  unpublishInitFile,
+  updateInitFile,
+  type OutputTarget,
+} from "./init-files.ts";
 
 const app = new Hono<{ Variables: { user: User } }>();
 
@@ -66,6 +84,15 @@ app.get("/api/health", async (c) => {
   await pool.query("select 1");
   return c.json({ ok: true });
 });
+
+// Init files written to CONFIG_DIR. Public, like the map that loads them, and
+// readable from other origins since the map is usually hosted elsewhere.
+app.use("/config/*", async (c, next) => {
+  await next();
+  c.header("Access-Control-Allow-Origin", "*");
+  c.header("Cache-Control", "no-cache");
+});
+app.get("/config/*", serveStatic({ root: CONFIG_DIR, rewriteRequestPath: (p) => p.replace(/^\/config/, "") }));
 
 app.post("/api/auth/login", async (c) => {
   const { email, password } = ((await jsonBody(c)) ?? {}) as { email?: unknown; password?: unknown };
@@ -155,6 +182,11 @@ app.get("/api/init-files/:id/export", async (c) => {
   if (c.req.query("download") !== undefined) c.header("Content-Disposition", `attachment; filename="${slug}.json"`);
   return c.json(content);
 });
+
+for (const [target, route] of [["published", "publish"], ["test", "test"]] as [OutputTarget, string][]) {
+  app.post(`/api/init-files/:id/${route}`, async (c) => c.json(await publishInitFile(c.req.param("id"), target, c.var.user.email)));
+  app.delete(`/api/init-files/:id/${route}`, async (c) => c.json(await unpublishInitFile(c.req.param("id"), target)));
+}
 
 app.notFound((c) => (c.req.path.startsWith("/api/") ? c.json({ error: "Not found" }, 404) : c.text("Not found", 404)));
 

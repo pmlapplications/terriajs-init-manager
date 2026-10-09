@@ -15,7 +15,11 @@ import {
   loadInitFile,
   saveInitFile,
   type InitFileInput,
+  setInitFileOutput,
+  type InitFile,
+  type InitFileOutput,
   type MemberRef,
+  type OutputTarget,
 } from "./api";
 import { CameraMap, type MapCamera, type Rect } from "./CameraMap";
 import { MemberList, MemberSearch } from "./MembersPanel";
@@ -127,6 +131,9 @@ export function InitFileEditor({ id }: { id: string | null }) {
   const [message, setMessage] = useState<{ level: "ok" | "error"; text: string } | null>(null);
   const [exported, setExported] = useState<JsonObject | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  // Copies in the server's public config folder, as of the last load, save or toggle.
+  const [outputs, setOutputs] = useState<Pick<InitFile, "published" | "test">>({ published: null, test: null });
+  const [outputBusy, setOutputBusy] = useState<OutputTarget | null>(null);
 
   useEffect(() => {
     if (id === null) return;
@@ -144,6 +151,7 @@ export function InitFileEditor({ id }: { id: string | null }) {
         };
         setDraft(loaded);
         setRecord({ id: file.id, version: file.version });
+        setOutputs({ published: file.published, test: file.test });
         setSavedInput(JSON.stringify(toInput(loaded)));
         setGeneration((g) => g + 1);
         setLoading(false);
@@ -211,6 +219,7 @@ export function InitFileEditor({ id }: { id: string | null }) {
       const savedDraft = { ...draft, catalog: saved.catalog, workbench: saved.workbench };
       setDraft(savedDraft);
       setRecord({ id: saved.id, version: saved.version });
+      setOutputs({ published: saved.published, test: saved.test });
       setSavedInput(JSON.stringify(toInput(savedDraft)));
       setMessage({ level: "ok", text: `Saved version ${saved.version}` });
       if (exported) showExport(saved.id);
@@ -223,12 +232,30 @@ export function InitFileEditor({ id }: { id: string | null }) {
   };
 
   const remove = async () => {
-    if (!record || !confirm(`Delete the init file “${draft.name}” (${draft.slug}.json)? Its catalog groups and items are kept.`)) return;
+    const files = [outputs.published, outputs.test].filter((o) => o !== null).map((o) => o.path);
+    const removed = files.length ? ` Its published and test files (${files.join(", ")}) are removed;` : "";
+    if (!record || !confirm(`Delete the init file “${draft.name}” (${draft.slug}.json)?${removed} its catalog groups and items are kept.`)) return;
     try {
       await deleteInitFile(record.id);
       location.hash = "#/init-files";
     } catch (e) {
       setMessage({ level: "error", text: (e as Error).message });
+    }
+  };
+
+  const setOutput = async (target: OutputTarget, on: boolean) => {
+    if (!record) return;
+    const current = outputs[target];
+    if (!on && target === "published" && !confirm(`Unpublish “${draft.name}”? ${current?.path} is deleted, so maps loading it will stop working.`)) return;
+    setOutputBusy(target);
+    setMessage(null);
+    try {
+      const file = await setInitFileOutput(record.id, target, on);
+      setOutputs({ published: file.published, test: file.test });
+    } catch (e) {
+      setMessage({ level: "error", text: (e as Error).message });
+    } finally {
+      setOutputBusy(null);
     }
   };
 
@@ -276,6 +303,35 @@ export function InitFileEditor({ id }: { id: string | null }) {
           </button>
         </div>
       </div>
+
+      {record && (
+        <div className="init-outputs">
+          <OutputRow
+            label="Status"
+            onLabel="Published"
+            offLabel="Not published"
+            output={outputs.published}
+            currentVersion={record.version}
+            busy={outputBusy === "published"}
+            onChange={(on) => setOutput("published", on)}
+            turnOn={`Publish to /config/${draft.slug}.json`}
+            turnOff="Unpublish"
+            offHint="Publishing writes the last saved version where maps can load it."
+          />
+          <OutputRow
+            label="Test mode"
+            onLabel="On"
+            offLabel="Off"
+            output={outputs.test}
+            currentVersion={record.version}
+            busy={outputBusy === "test"}
+            onChange={(on) => setOutput("test", on)}
+            turnOn="Turn on"
+            turnOff="Turn off"
+            offHint={`A test copy at /config/test/${record.id}.json, updated every time you save.`}
+          />
+        </div>
+      )}
 
       {problems.length > 0 && (
         <ul className="issues init-problems">
@@ -543,6 +599,53 @@ export function InitFileEditor({ id }: { id: string | null }) {
         {exported && <pre className="code-block">{JSON.stringify(exported, null, 2)}</pre>}
       </section>
     </main>
+  );
+}
+
+/** Published or test state of an init file, with a button to toggle it. */
+function OutputRow(props: {
+  label: string;
+  onLabel: string;
+  offLabel: string;
+  output: InitFileOutput | null;
+  currentVersion: number;
+  busy: boolean;
+  onChange: (on: boolean) => void;
+  turnOn: string;
+  turnOff: string;
+  offHint: string;
+}) {
+  const { output } = props;
+  const stale = output !== null && output.version !== props.currentVersion;
+  return (
+    <div className="init-output">
+      <span className="init-output-label">{props.label}</span>
+      <span className={`status ${output ? (stale ? "warning" : "ok") : ""}`}>{output ? props.onLabel : props.offLabel}</span>
+      <span className="hint">
+        {output ? (
+          <>
+            <a className="link" href={output.path} target="_blank" rel="noreferrer">
+              {new URL(output.path, location.href).href}
+            </a>{" "}
+            · version {output.version}, {new Date(output.writtenAt).toLocaleString()}
+            {output.writtenBy && ` by ${output.writtenBy}`}
+            {stale && ` · out of date (now version ${props.currentVersion})`}
+          </>
+        ) : (
+          props.offHint
+        )}
+      </span>
+      <span className="init-output-actions">
+        {output && stale && (
+          <button type="button" className="btn small" disabled={props.busy} onClick={() => props.onChange(true)}>
+            Update
+          </button>
+        )}
+        <button type="button" className={`btn small${output ? "" : " primary"}`} disabled={props.busy} onClick={() => props.onChange(!output)}>
+          {props.busy ? "Working…" : output ? props.turnOff : props.turnOn}
+        </button>
+      </span>
+    </div>
   );
 }
 

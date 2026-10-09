@@ -1156,6 +1156,43 @@ a.link {
   flex-wrap: wrap;
 }
 
+.init-outputs {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.init-output {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.init-output-label {
+  min-width: 80px;
+  font-weight: 600;
+}
+
+.init-output .status {
+  cursor: default;
+}
+
+.init-output .status:not(.ok, .warning) {
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.init-output .hint {
+  flex: 1 1 240px;
+  overflow-wrap: anywhere;
+}
+
+.init-output-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .init-problems {
   margin: 0 0 16px;
   padding: 8px 12px;

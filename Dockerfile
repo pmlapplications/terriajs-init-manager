@@ -14,6 +14,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server ./server
 COPY --from=build /app/dist ./dist
+# Init files written from the editor; served at /config. Mount a volume here to keep them.
+RUN mkdir config && chown node:node config
 USER node
 EXPOSE 3000
 CMD ["node", "server/index.ts"]

@@ -22,8 +22,8 @@ export function InitFilesPage() {
           </a>
         </div>
         <p className="hint">
-          Each init file is a complete Terria catalog: its top-level groups, the starting map view, base maps and settings. Download one
-          and put it in the map's init folder.
+          Each init file is a complete Terria catalog: its top-level groups, the starting map view, base maps and settings. Publish one
+          to serve it at /config/&lt;file name&gt;.json, or download it and put it in the map's init folder.
         </p>
         {error && <p className="issues-inline error">{error}</p>}
         {!files && !error && <p className="hint">Loading…</p>}
@@ -35,6 +35,8 @@ export function InitFilesPage() {
                   <th>Name</th>
                   <th>File</th>
                   <th>Catalog groups</th>
+                  <th>Status</th>
+                  <th>Test mode</th>
                   <th>Version</th>
                   <th>Updated</th>
                   <th>Updated by</th>
@@ -56,6 +58,24 @@ export function InitFilesPage() {
                       <code>{f.slug}.json</code>
                     </td>
                     <td>{f.catalogCount}</td>
+                    <td>
+                      {f.published ? (
+                        <a className="link" href={f.published.path} target="_blank" rel="noreferrer" title={`Published version ${f.published.version}`}>
+                          Published{f.published.version !== f.version && " (out of date)"}
+                        </a>
+                      ) : (
+                        "Not published"
+                      )}
+                    </td>
+                    <td>
+                      {f.test ? (
+                        <a className="link" href={f.test.path} target="_blank" rel="noreferrer">
+                          On
+                        </a>
+                      ) : (
+                        "Off"
+                      )}
+                    </td>
                     <td>{f.version}</td>
                     <td title={new Date(f.updatedAt).toLocaleString()}>{new Date(f.updatedAt).toLocaleDateString()}</td>
                     <td>{f.updatedBy}</td>
@@ -68,7 +88,7 @@ export function InitFilesPage() {
                 ))}
                 {files.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="hint empty-row">
+                    <td colSpan={9} className="hint empty-row">
                       No init files yet. Use New init file to create one.
                     </td>
                   </tr>

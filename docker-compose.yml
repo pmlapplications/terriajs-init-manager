@@ -34,6 +34,9 @@ services:
       PORT: 3000
     ports:
       - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Published and test init files, served at /config.
+      - config-data:/app/config
     depends_on:
       db:
         condition: service_healthy
@@ -41,3 +44,5 @@ services:
 volumes:
   db-data:
     name: ${DB_VOLUME:-terria-layer-manager-db}
+  config-data:
+    name: ${CONFIG_VOLUME:-terria-layer-manager-config}

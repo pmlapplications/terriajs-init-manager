@@ -29,6 +29,15 @@ workbench items. Viewer mode, splitter, base maps, settings, CORS domains and th
 have fields; stories and any other top-level keys are edited as JSON. **Download JSON** gives the
 finished `<file name>.json` with published groups and items only. The map uses OpenStreetMap tiles.
 
+Each init file is **Published** or **Not published**. Publishing writes the last saved version to
+`CONFIG_DIR/<file name>.json` (default `./config`; a Docker volume in the compose stack), which is
+public at `/config/<file name>.json` with CORS allowed, so a Terria map can load it directly.
+Unpublishing deletes the file. The published file is a snapshot: after saving, the editor shows it
+as out of date until you **Update** it. Publishing after a rename moves the file to the new name.
+**Test mode** writes a separate copy to `/config/test/<init file id>.json` that is rewritten on
+every save, for trying changes before publishing. Deleting an init file removes both files.
+Which files are on disk is recorded in `init_file_output`.
+
 ## Requirements
 
 Node 20.19+ or 22.12+ (`nvm use` picks up `.nvmrc`).
@@ -106,12 +115,13 @@ docker compose exec app node server/create-user.ts    # inside the Docker stack
 ```
 
 Migrations only run automatically on an empty volume. To add a newer one (e.g. `003_users.sql`,
-`004_group_member_types.sql`, `005_init_file_version.sql`) to an existing database:
+`004_group_member_types.sql`, `005_init_file_version.sql`, `006_init_file_output.sql`) to an existing database:
 
 ```bash
 docker compose exec -T db psql -U terria -d terria < db/migrations/003_users.sql
 docker compose exec -T db psql -U terria -d terria < db/migrations/004_group_member_types.sql
 docker compose exec -T db psql -U terria -d terria < db/migrations/005_init_file_version.sql
+docker compose exec -T db psql -U terria -d terria < db/migrations/006_init_file_output.sql
 ```
 
 ### API
@@ -143,6 +153,11 @@ In production (`NODE_ENV=production`) it also serves `dist/`.w
 | `PUT` | `/api/init-files/:id` | Update one. The same body plus `version`; returns 409 if it is stale. |
 | `DELETE` | `/api/init-files/:id` | Delete one (its groups and items are kept). |
 | `GET` | `/api/init-files/:id/export` | The finished init file JSON from `export_init_file()`, published members only. Add `?download` to save it as `<slug>.json`. |
+| `POST` | `/api/init-files/:id/publish` | Publish: write the finished JSON to `CONFIG_DIR/<slug>.json`. Returns the init file, whose `published` is `{ path, version, writtenAt, writtenBy }` (null when not published). 409 if another init file is published under that name. |
+| `DELETE` | `/api/init-files/:id/publish` | Unpublish: delete the file. |
+| `POST` | `/api/init-files/:id/test` | Turn test mode on: write `CONFIG_DIR/test/<id>.json`, rewritten on every save. Shown as `test`. |
+| `DELETE` | `/api/init-files/:id/test` | Turn test mode off: delete the test file. |
+| `GET` | `/config/<slug>.json`, `/config/test/<id>.json` | Files written above. Public (no login) and served with `Access-Control-Allow-Origin: *`. |
 
 Items are stored as `catalog_member` rows: `id`, `name`, `description` and `url` go to columns,
 `shareKeys` to `catalog_member_share_key`, and every other trait to `traits`. Groups are stored the

@@ -5,11 +5,30 @@
 // (init_file_catalog) and the workbench an ordered list of items inside those
 // groups (init_file_workbench). export_init_file() in the database assembles
 // the finished JSON, with published members only.
+//
+// That JSON can be written to CONFIG_DIR, which the server makes public at
+// /config: publishing writes <slug>.json, and test mode writes
+// test/<init file id>.json. init_file_output records which files are on disk.
 
+import { mkdirSync } from "node:fs";
+import { rename, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type pg from "pg";
 import { pool, transaction } from "./db.ts";
 import { ApiError } from "./errors.ts";
 import type { JsonObject, MemberKind, MemberRef } from "./members.ts";
+
+/** A copy of the init file written to the config folder. */
+export interface InitFileOutput {
+  /** Public path, e.g. /config/<slug>.json. */
+  path: string;
+  /** The init file version that was written. */
+  version: number;
+  writtenAt: string;
+  writtenBy: string | null;
+}
+
+export type OutputTarget = "published" | "test";
 
 export interface InitFileSummary {
   id: string;
@@ -22,6 +41,10 @@ export interface InitFileSummary {
   version: number;
   updatedAt: string;
   updatedBy: string | null;
+  /** The file maps load, at /config/<slug>.json; null when not published. */
+  published: InitFileOutput | null;
+  /** The test copy at /config/test/<id>.json; null when test mode is off. */
+  test: InitFileOutput | null;
 }
 
 export interface InitFile extends InitFileSummary {
@@ -43,6 +66,8 @@ interface InitFileRow {
   updated_at: Date;
   updated_by: string | null;
   catalog_count: number;
+  published: InitFileOutput | null;
+  test: InitFileOutput | null;
 }
 
 interface InitFileFields {
@@ -56,7 +81,14 @@ interface InitFileFields {
 
 const SELECT_INIT_FILE = `
   select f.id, f.slug, f.name, f.description, f.config, f.version, f.updated_at, f.updated_by,
-         (select count(*)::int from init_file_catalog c where c.init_file_id = f.id) as catalog_count
+         (select count(*)::int from init_file_catalog c where c.init_file_id = f.id) as catalog_count,
+         ${["published", "test"]
+           .map(
+             (target) => `(select json_build_object('path', '/config/' || o.file_path, 'version', o.version,
+                                                    'writtenAt', o.written_at, 'writtenBy', o.written_by)
+                           from init_file_output o where o.init_file_id = f.id and o.target = '${target}') as ${target}`,
+           )
+           .join(",\n")}
   from init_file f`;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -73,6 +105,8 @@ const toSummary = (row: InitFileRow): InitFileSummary => ({
   version: row.version,
   updatedAt: row.updated_at.toISOString(),
   updatedBy: row.updated_by,
+  published: row.published,
+  test: row.test,
 });
 
 function parseIds(value: unknown, key: string): string[] {
@@ -236,14 +270,22 @@ export async function updateInitFile(id: string, version: number, body: unknown,
     }
     await replaceLinks(client, "init_file_catalog", id, f.catalog);
     await replaceLinks(client, "init_file_workbench", id, f.workbench);
+    // The test copy follows every save; the published file only changes when published again.
+    const { rowCount: testing } = await client.query("select 1 from init_file_output where init_file_id = $1 and target = 'test'", [id]);
+    if (testing) await writeOutput(client, id, "test", user);
     return (await fetchInitFile(client, id))!;
   });
 }
 
+/** Deletes an init file and any files it has in the config folder. */
 export async function deleteInitFile(id: string): Promise<void> {
   checkId(id);
-  const { rowCount } = await pool.query("delete from init_file where id = $1", [id]);
-  if (!rowCount) throw notFound(id);
+  await transaction(async (client) => {
+    const { rows } = await client.query<{ file_path: string }>("select file_path from init_file_output where init_file_id = $1", [id]);
+    const { rowCount } = await client.query("delete from init_file where id = $1", [id]);
+    if (!rowCount) throw notFound(id);
+    for (const r of rows) await removeConfigFile(r.file_path);
+  });
 }
 
 /** The finished init file JSON, with published catalog members only. */
@@ -255,4 +297,86 @@ export async function exportInitFile(id: string): Promise<{ slug: string; conten
   );
   if (!rows[0]) throw notFound(id);
   return rows[0];
+}
+
+/** Where published and test files are written; served publicly at /config. */
+export const CONFIG_DIR = resolve(process.env.CONFIG_DIR ?? "config");
+mkdirSync(join(CONFIG_DIR, "test"), { recursive: true });
+
+/** Path under CONFIG_DIR of an init file's published or test copy. */
+function outputPath(target: OutputTarget, id: string, slug: string) {
+  // SLUG has no "/" and can't start with "."; checked again in case of old rows.
+  if (!SLUG.test(slug)) throw new ApiError(400, `“${slug}” can't be used as a file name`);
+  return target === "published" ? `${slug}.json` : `test/${id}.json`;
+}
+
+async function writeConfigFile(path: string, content: JsonObject) {
+  const file = join(CONFIG_DIR, path);
+  // Write then rename, so a map never reads a half-written file.
+  const tmp = `${file}.${process.pid}.tmp`;
+  await writeFile(tmp, `${JSON.stringify(content, null, 2)}\n`);
+  await rename(tmp, file);
+}
+
+const removeConfigFile = (path: string) => rm(join(CONFIG_DIR, path), { force: true });
+
+/**
+ * Writes the published or test copy and records it. Runs inside the caller's
+ * transaction, so a failed write leaves the database unchanged.
+ */
+async function writeOutput(client: pg.PoolClient, id: string, target: OutputTarget, user: string | null) {
+  const { rows } = await client.query<{ slug: string; version: number; content: JsonObject; old_path: string | null }>(
+    `select f.slug, f.version, export_init_file(f.id) as content,
+            (select o.file_path from init_file_output o where o.init_file_id = f.id and o.target = $2) as old_path
+     from init_file f where f.id = $1 for update`,
+    [id, target],
+  );
+  if (!rows[0]) throw notFound(id);
+  const { slug, version, content, old_path } = rows[0];
+  const path = outputPath(target, id, slug);
+
+  // Another file renamed away from this slug may still be published under it.
+  const { rows: owners } = await client.query<{ name: string }>(
+    `select f.name from init_file_output o join init_file f on f.id = o.init_file_id
+     where o.file_path = $1 and o.init_file_id <> $2`,
+    [path, id],
+  );
+  if (owners[0]) {
+    throw new ApiError(409, `${path} is already published by the init file “${owners[0].name}”; unpublish or publish that one first`);
+  }
+
+  await client.query(
+    `insert into init_file_output (init_file_id, target, file_path, version, written_by)
+     values ($1, $2, $3, $4, $5)
+     on conflict (init_file_id, target) do update
+       set file_path = excluded.file_path, version = excluded.version, written_at = now(), written_by = excluded.written_by`,
+    [id, target, path, version, user],
+  );
+  await writeConfigFile(path, content);
+  // Published under an old file name before a rename.
+  if (old_path && old_path !== path) await removeConfigFile(old_path);
+}
+
+/** Publishes (or test mode: writes the test copy of) an init file, replacing any earlier copy. */
+export async function publishInitFile(id: string, target: OutputTarget, user: string | null): Promise<InitFile> {
+  checkId(id);
+  return transaction(async (client) => {
+    await writeOutput(client, id, target, user);
+    return (await fetchInitFile(client, id))!;
+  });
+}
+
+/** Unpublishes (or turns off test mode for) an init file, deleting the file. */
+export async function unpublishInitFile(id: string, target: OutputTarget): Promise<InitFile> {
+  checkId(id);
+  return transaction(async (client) => {
+    const { rows } = await client.query<{ file_path: string }>(
+      "delete from init_file_output where init_file_id = $1 and target = $2 returning file_path",
+      [id, target],
+    );
+    if (rows[0]) await removeConfigFile(rows[0].file_path);
+    const file = await fetchInitFile(client, id);
+    if (!file) throw notFound(id);
+    return file;
+  });
 }

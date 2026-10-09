@@ -185,6 +185,18 @@ export function listMembers(query: MemberListQuery, signal?: AbortSignal) {
 
 // --- Init files --------------------------------------------------------------
 
+/** A copy of an init file written to the server's public config folder. */
+export interface InitFileOutput {
+  /** Public path, e.g. /config/<slug>.json. */
+  path: string;
+  /** The init file version that was written. */
+  version: number;
+  writtenAt: string;
+  writtenBy: string | null;
+}
+
+export type OutputTarget = "published" | "test";
+
 export interface InitFileSummary {
   id: string;
   /** File name without .json. */
@@ -197,6 +209,10 @@ export interface InitFileSummary {
   version: number;
   updatedAt: string;
   updatedBy: string | null;
+  /** The file maps load, at /config/<slug>.json; null when not published. */
+  published: InitFileOutput | null;
+  /** The test copy at /config/test/<id>.json, rewritten on every save; null when test mode is off. */
+  test: InitFileOutput | null;
 }
 
 export interface InitFile extends InitFileSummary {
@@ -235,6 +251,13 @@ export const deleteInitFile = (id: string) => request<null>(initFilePath(id), { 
 
 /** The finished JSON as Terria would load it (published members only). */
 export const exportInitFile = (id: string) => request<JsonObject>(`${initFilePath(id)}/export`);
+
+/**
+ * Publishes the last saved version to /config/<slug>.json, or with "test" writes
+ * /config/test/<id>.json; `on: false` unpublishes or turns test mode off.
+ */
+export const setInitFileOutput = (id: string, target: OutputTarget, on: boolean) =>
+  request<InitFile>(`${initFilePath(id)}/${target === "published" ? "publish" : "test"}`, { method: on ? "POST" : "DELETE" });
 
 /** A link that downloads the finished JSON as <slug>.json. */
 export const initFileDownloadUrl = (id: string) => `/api${initFilePath(id)}/export?download`;
