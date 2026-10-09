@@ -27,7 +27,7 @@ exclude_patterns = ["_build", "requirements.txt"]
 html_theme = "sphinx_book_theme"
 html_title = f"{project} {release}"
 html_theme_options = {
-    "repository_url": "https://rsg-gitlab.npm.ac.uk/pml-applications/terriajs-initialisation-manager",
+    "repository_url": "https://github.com/pmlapplications/terriajs-init-manager",
     "repository_provider": "gitlab",
     "path_to_docs": "docs",
     "use_repository_button": True,
