@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { pool } from "../db.ts";
-import { createGroup, createItem, loggedInClient, resetDatabase, setPublished, type Client } from "./helpers.ts";
+import { createGroup, createInitFile, createItem, loggedInClient, resetDatabase, setPublished, type Client } from "./helpers.ts";
 
 let client: Client;
 let email: string;
@@ -195,9 +195,89 @@ describe("groups", () => {
   });
 });
 
-describe("member search", () => {
-  const ids = (res: { body: { items: { name: string }[] } }) => res.body.items.map((m) => m.name);
+describe("deleting", () => {
+  // init_file isn't truncated between tests, so each init file needs its own slug.
+  let files = 0;
+  const initFile = (fields: Record<string, unknown>) => createInitFile(client, { slug: `delete-${++files}`, name: `Map ${files}`, ...fields });
 
+  it("deletes an unused item, removing it from its groups", async () => {
+    const item = await createItem(client, { name: "Gone" });
+    const group = await createGroup(client, { name: "G" }, [item.id]);
+    const res = await client.delete(`/api/items/wms/${item.id}`);
+    expect(res.status).toBe(204);
+    expect((await client.get(`/api/items/wms/${item.id}`)).status).toBe(404);
+    expect((await client.get(`/api/groups/group/${group.id}`)).body.members).toEqual([]);
+    const { rows } = await pool.query("select operation from catalog_member_revision where member_id = $1 order by id", [item.id]);
+    expect(rows.map((r) => r.operation)).toEqual(["INSERT", "DELETE"]);
+  });
+
+  it("deletes a group but keeps its members", async () => {
+    const item = await createItem(client, { name: "Kept" });
+    const inner = await createGroup(client, { name: "Inner" }, [item.id]);
+    const group = await createGroup(client, { name: "Outer" }, [inner.id]);
+    expect((await client.delete(`/api/groups/group/${group.id}`)).status).toBe(204);
+    expect((await client.get(`/api/groups/group/${group.id}`)).status).toBe(404);
+    expect((await client.get(`/api/groups/group/${inner.id}`)).body.members.map((m: { id: string }) => m.id)).toEqual([item.id]);
+    expect((await client.get(`/api/items/wms/${item.id}`)).status).toBe(200);
+  });
+
+  it("refuses to delete members an init file uses, at any depth", async () => {
+    const item = await createItem(client, { name: "Layer" });
+    const inner = await createGroup(client, { name: "Inner" }, [item.id]);
+    const outer = await createGroup(client, { name: "Outer" }, [inner.id]);
+    await initFile({ name: "Ocean map", catalog: [outer.id] });
+    await initFile({ name: "Atlas", catalog: [outer.id], workbench: [item.id] });
+
+    for (const [path, name] of [
+      [`/api/items/wms/${item.id}`, "Layer"],
+      [`/api/groups/group/${inner.id}`, "Inner"],
+      [`/api/groups/group/${outer.id}`, "Outer"],
+    ]) {
+      const res = await client.delete(path);
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe(
+        `“${name}” is used by the init files “Atlas”, “Ocean map”; remove it, or the groups containing it, from them before deleting it`,
+      );
+    }
+    expect((await client.get(`/api/items/wms/${item.id}`)).status).toBe(200);
+  });
+
+  it("404s a missing member, or one of another type or kind", async () => {
+    const item = await createItem(client, {});
+    expect((await client.delete(`/api/items/wms/${MISSING}`)).status).toBe(404);
+    expect((await client.delete("/api/items/wms/nope")).status).toBe(404);
+    expect((await client.delete(`/api/items/csv/${item.id}`)).status).toBe(404);
+    expect((await client.delete(`/api/groups/wms/${item.id}`)).status).toBe(404);
+    expect((await client.get(`/api/items/wms/${item.id}`)).status).toBe(200);
+  });
+
+  it("counts the init files using each member, and finds orphans", async () => {
+    const used = await createItem(client, { name: "A used item" });
+    const grouped = await createItem(client, { name: "B unused item" });
+    await createItem(client, { name: "D orphan item" });
+    const usedGroup = await createGroup(client, { name: "E used group" }, [used.id]);
+    await createGroup(client, { name: "C orphan group" }, [grouped.id]);
+    await initFile({ catalog: [usedGroup.id] });
+    await initFile({ catalog: [usedGroup.id] });
+
+    const res = await client.get("/api/members?sort=name&dir=asc");
+    expect(res.body.items.map((m: { name: string; initFileCount: number }) => [m.name, m.initFileCount])).toEqual([
+      ["A used item", 2],
+      ["B unused item", 0],
+      ["C orphan group", 0],
+      ["D orphan item", 0],
+      ["E used group", 2],
+    ]);
+    const names = async (query: string) => ids(await client.get(`/api/members?sort=name&dir=asc&${query}`));
+    expect(await names("orphaned=true")).toEqual(["C orphan group", "D orphan item"]);
+    expect(await names("orphaned=true&kind=item")).toEqual(["D orphan item"]);
+    expect(await names("orphaned=false")).toEqual(["A used item", "B unused item", "E used group"]);
+  });
+});
+
+const ids = (res: { body: { items: { name: string }[] } }) => res.body.items.map((m) => m.name);
+
+describe("member search", () => {
   it("pages through every item and group, newest first by default", async () => {
     for (const name of ["One", "Two", "Three"]) await createItem(client, { name });
     await createGroup(client, { name: "Folder" });
@@ -266,6 +346,7 @@ describe("member search", () => {
     ["page=0", /"page"/],
     ["pageSize=abc", /"pageSize"/],
     ["within=nope", /"within"/],
+    ["orphaned=yes", /"orphaned"/],
   ])("rejects %s", async (query, message) => {
     const res = await client.get(`/api/members?${query}`);
     expect(res.status).toBe(400);

@@ -48,18 +48,25 @@ the path) and, for groups, without `members` (sent separately as database ids).
 | `GET` | `/api/items/:type/:id` | One item: `{ id, type, terriaId, name, url, isPublished, version, updatedAt, item }`. |
 | `POST` | `/api/items/:type` | Create an item. The body is the item. |
 | `PUT` | `/api/items/:type/:id` | Update an item: `{ "version", "item" }`. |
+| `DELETE` | `/api/items/:type/:id` | Delete an item, and remove it from its groups. `409` if an init file uses it. |
 | `GET` | `/api/groups/:type` | Saved groups of a type, e.g. `/api/groups/group`. |
 | `GET` | `/api/groups/:type/:id` | One group, as for items plus `members`: its members in order, each `{ id, type, kind, terriaId, name }`. |
 | `GET` | `/api/groups/:type/member-types` | The types a group of this type may contain. |
 | `POST` | `/api/groups/:type` | Create a group: `{ "item", "members" }`, with `members` an ordered array of database ids. |
 | `PUT` | `/api/groups/:type/:id` | Update a group: `{ "version", "item", "members" }`. Leave out `members` to keep the current ones. |
+| `DELETE` | `/api/groups/:type/:id` | Delete a group. Its members are kept; it is removed from its parent groups. `409` if an init file uses it. |
 
 A request for a type of the wrong kind (for example `/api/items/group`) returns `404`.
+
+An init file **uses** a member if the member, or a group containing it at any depth, is in the
+init file's catalog, or the member is on its workbench. Such a member can't be deleted; the `409`
+error names the init files.
 
 ### Searching members
 
 `GET /api/members` returns `{ items, total, page, pageSize }`. Each item has the fields above
-plus `kind`, `description`, `updatedBy` and, for groups, `memberCount`. Query parameters, all
+plus `kind`, `description`, `updatedBy`, `initFileCount` (the number of init files that use it)
+and, for groups, `memberCount`. Query parameters, all
 optional:
 
 | Parameter | |
@@ -70,6 +77,7 @@ optional:
 | `memberOf` | A group type: only types that group may contain. |
 | `within` | Comma-separated group ids: only their members, at any depth. |
 | `published` | `true` or `false`. |
+| `orphaned` | `true`: only members in no group and no init file. `false`: only the rest. |
 | `sort` | `name`, `type`, `terriaId`, `url`, `isPublished`, `version`, `updatedAt` (default) or `updatedBy`. |
 | `dir` | `asc` or `desc` (default). |
 | `page`, `pageSize` | Page number from 1, and page size (default 25, at most 200). |

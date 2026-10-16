@@ -9,6 +9,10 @@ All notable changes to TerriaJS Init Manager. The format follows
 
 ### Added
 
+- Delete items and groups from the catalog table, unless an init file uses them. Deleting a
+  group keeps its members.
+- An **Orphaned only** filter in the catalog table, for items and groups in no group and no init
+  file.
 - A **Docs** menu item that shows this documentation inside the app, served by the server at
   `/docs/`. The Docker image now builds the documentation (new `DOCS_DIR` setting).
 - Released under the MIT License (see `LICENSE`).

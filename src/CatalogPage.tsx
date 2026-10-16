@@ -1,9 +1,11 @@
 // Landing page: every stored catalog item and group, paged, sorted and filtered on the
 // server. The table state is kept for the browser tab, so going to the editor
-// and back returns to the same page.
+// and back returns to the same page. Members no init file uses can be deleted
+// from here.
 
 import { useEffect, useState } from "react";
-import { listMembers, type MemberListEntry, type MemberListPage, type MemberListQuery, type MemberSortKey } from "./api";
+import { loadRecord, saveRecord } from "./drafts";
+import { deleteConfig, listMembers, type MemberListEntry, type MemberListPage, type MemberListQuery, type MemberSortKey } from "./api";
 import { Icon } from "./Icon";
 import { groupTypes, itemTypes, typeLabel, type ItemType, type MemberKind } from "./terria/catalog-ui";
 
@@ -12,13 +14,25 @@ interface TableState {
   kind: "" | MemberKind; // "" for items and groups
   type: string; // "" for all types
   published: "" | "true" | "false";
+  /** Only members in no group and no init file. */
+  orphaned: boolean;
   sort: MemberSortKey;
   dir: "asc" | "desc";
   page: number;
   pageSize: number;
 }
 
-const DEFAULT_STATE: TableState = { q: "", kind: "", type: "", published: "", sort: "updatedAt", dir: "desc", page: 1, pageSize: 25 };
+const DEFAULT_STATE: TableState = {
+  q: "",
+  kind: "",
+  type: "",
+  published: "",
+  orphaned: false,
+  sort: "updatedAt",
+  dir: "desc",
+  page: 1,
+  pageSize: 25,
+};
 const PAGE_SIZES = [10, 25, 50, 100];
 const STATE_KEY = "tlm.catalog.table";
 const SEARCH_DELAY_MS = 250;
@@ -70,6 +84,9 @@ export function CatalogPage({
   // The table state the last response (or error) was for; anything else is still loading.
   const [settled, setSettled] = useState<TableState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  // Bumped to reload the current page, e.g. after a delete.
+  const [reload, setReload] = useState(0);
 
   /** Changes filters or sorting and goes back to the first page. */
   const refine = (changes: Partial<TableState>) => setState((s) => ({ ...s, ...changes, page: 1 }));
@@ -87,6 +104,7 @@ export function CatalogPage({
       kind: state.kind || undefined,
       types: state.type ? [state.type] : undefined,
       published: state.published === "" ? undefined : state.published === "true",
+      orphaned: state.orphaned || undefined,
       sort: state.sort,
       dir: state.dir,
       page: state.page,
@@ -109,7 +127,7 @@ export function CatalogPage({
       },
     );
     return () => abort.abort();
-  }, [state]);
+  }, [state, reload]);
 
   const loading = settled !== state;
 
@@ -120,10 +138,29 @@ export function CatalogPage({
         : { sort: key, dir: DESCENDING_FIRST.has(key) ? "desc" : "asc" },
     );
 
-  const filtered = state.q !== "" || state.kind !== "" || state.type !== "" || state.published !== "";
+  const filtered = state.q !== "" || state.kind !== "" || state.type !== "" || state.published !== "" || state.orphaned;
   const clearFilters = () => {
     setSearch("");
-    refine({ q: "", kind: "", type: "", published: "" });
+    refine({ q: "", kind: "", type: "", published: "", orphaned: false });
+  };
+
+  const remove = async (member: MemberListEntry) => {
+    const kept =
+      member.kind === "group" && member.memberCount
+        ? ` Its ${member.memberCount} member${member.memberCount === 1 ? " is" : "s are"} kept.`
+        : "";
+    if (!confirm(`Delete the ${member.kind} “${member.name}”? It is also removed from any groups it is in.${kept}`)) return;
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteConfig(member.kind, member.type, member.id);
+      // An editor draft loaded from it can only be saved as a new config now.
+      if (loadRecord(member.type)?.id === member.id) saveRecord(member.type, null);
+      setMessage(`Deleted “${member.name}”`);
+      setReload((r) => r + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const total = result?.total ?? 0;
@@ -185,6 +222,9 @@ export function CatalogPage({
             <option value="true">Published only</option>
             <option value="false">Unpublished only</option>
           </select>
+          <label className="toggle" title="Items and groups that are in no group and no init file">
+            <input type="checkbox" checked={state.orphaned} onChange={(e) => refine({ orphaned: e.target.checked })} /> Orphaned only
+          </label>
           {filtered && (
             <button type="button" className="btn small" onClick={clearFilters}>
               Clear filters
@@ -192,6 +232,7 @@ export function CatalogPage({
           )}
         </div>
 
+        {message && <p className="save-message ok">{message}</p>}
         {error && <p className="issues-inline error">{error}</p>}
         {!result && !error && <p className="hint">Loading…</p>}
 
@@ -251,6 +292,20 @@ export function CatalogPage({
                           onClick={() => onDuplicate(item)}
                         >
                           <Icon name="copy" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          disabled={item.initFileCount > 0}
+                          title={
+                            item.initFileCount > 0
+                              ? `Used by ${item.initFileCount} init file${item.initFileCount === 1 ? "" : "s"}; remove it from ${item.initFileCount === 1 ? "that file" : "them"} to delete it`
+                              : `Delete this ${item.kind}`
+                          }
+                          aria-label={`Delete ${item.name}`}
+                          onClick={() => remove(item)}
+                        >
+                          <Icon name="trash" />
                         </button>
                       </td>
                     </tr>

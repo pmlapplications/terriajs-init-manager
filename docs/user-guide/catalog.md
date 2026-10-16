@@ -12,6 +12,7 @@ The landing page, **Catalog items**, lists every saved item and group in a paged
 - **Filter** by kind (items or groups), by type, or by published state.
 - **Sort** by clicking a column header; click again to reverse the order.
 - Click a **name** to open it in the editor.
+- **Orphaned only** shows the items and groups that are in no group and no init file.
 - The **duplicate** button opens an unsaved copy in the editor, named "Copy of …". Save it with
   **Save new**. The copy has no Terria id or share keys, since those must be unique.
 
@@ -21,6 +22,16 @@ editor and come back to where you were.
 The **Published** column shows whether an item or group is included when init files are
 exported. Unpublished members are left out of exported and published init files. There is
 currently no control for this in the app.
+
+## Deleting an item or group
+
+The **delete** button at the end of a row deletes the item or group, after asking you to confirm.
+It is removed from any groups it is in. Deleting a group does not delete its members.
+
+An item or group that an init file uses can't be deleted, and its delete button is greyed out.
+An init file uses a member that is in its catalog or workbench, or that is inside a group in its
+catalog at any depth. To delete it, first remove it, or the group containing it, from those init
+files.
 
 ## Creating an item or group
 

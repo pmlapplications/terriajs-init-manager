@@ -130,6 +130,10 @@ export function saveConfig(
       });
 }
 
+/** Deletes an item or group; refused with status 409 while an init file uses it. A group's members are kept. */
+export const deleteConfig = (kind: MemberKind, type: string, id: string) =>
+  request<null>(configPath(kind, type, id), { method: "DELETE" });
+
 /** Types a group of `groupType` may contain. */
 export const listMemberTypes = (groupType: string) =>
   request<string[]>(`/groups/${encodeURIComponent(groupType)}/member-types`);
@@ -140,6 +144,8 @@ export interface MemberListEntry extends ItemConfigSummary {
   updatedBy: string | null;
   /** Groups only: number of direct members. */
   memberCount: number | null;
+  /** Number of init files using the member, directly or through a group; it can only be deleted when 0. */
+  initFileCount: number;
 }
 
 export type MemberSortKey = "name" | "type" | "terriaId" | "url" | "isPublished" | "version" | "updatedAt" | "updatedBy";
@@ -154,6 +160,8 @@ export interface MemberListQuery {
   /** Only members of these groups (database ids), at any depth. */
   within?: string[];
   published?: boolean;
+  /** true: only members in no group and no init file; false: only the rest. */
+  orphaned?: boolean;
   sort?: MemberSortKey;
   dir?: "asc" | "desc";
   page?: number;
@@ -176,6 +184,7 @@ export function listMembers(query: MemberListQuery, signal?: AbortSignal) {
   if (query.memberOf) params.set("memberOf", query.memberOf);
   if (query.within) params.set("within", query.within.join(","));
   if (query.published !== undefined) params.set("published", String(query.published));
+  if (query.orphaned !== undefined) params.set("orphaned", String(query.orphaned));
   if (query.sort) params.set("sort", query.sort);
   if (query.dir) params.set("dir", query.dir);
   if (query.page) params.set("page", String(query.page));

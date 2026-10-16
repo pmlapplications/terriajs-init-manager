@@ -33,6 +33,7 @@ export const memberEntry = (overrides: Partial<MemberListEntry> = {}): MemberLis
   updatedAt: "2026-01-02T03:04:05Z",
   updatedBy: "ada@example.com",
   memberCount: null,
+  initFileCount: 0,
   ...overrides,
 });
 

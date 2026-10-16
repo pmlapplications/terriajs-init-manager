@@ -14,17 +14,19 @@
 //   DELETE /api/users/:id    delete a user (not yourself)
 //
 //   GET    /api/members           one page of items and groups of every type; query q, kind,
-//                                  type, memberOf, within, published, sort, dir, page, pageSize
+//                                  type, memberOf, within, published, orphaned, sort, dir, page, pageSize
 //
 //   GET    /api/items/:type       list stored configs of a catalog item type (wms, csv, ...)
 //   GET    /api/items/:type/:id   load one config
 //   POST   /api/items/:type       create a config from an item
 //   PUT    /api/items/:type/:id   update a config; body { version, item }
+//   DELETE /api/items/:type/:id   delete a config, unless an init file uses it
 //
 //   GET    /api/groups/:type      the same for catalog group types (group, wms-group, ...);
 //   GET    /api/groups/:type/:id  a group config also has `members`, and POST/PUT bodies
 //   POST   /api/groups/:type      are { item, members } / { version, item, members } with
 //   PUT    /api/groups/:type/:id  members as an ordered array of catalog member ids
+//   DELETE /api/groups/:type/:id  delete a group, unless an init file uses it; its members are kept
 //   GET    /api/groups/:type/member-types  types a group of this type may contain
 //
 //   GET    /api/init-files             list init files
@@ -52,7 +54,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { PG_CHECK_VIOLATION, PG_RAISE_EXCEPTION, PG_UNIQUE_VIOLATION, pgErrorCode, pool } from "./db.ts";
 import { ApiError } from "./errors.ts";
 import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseNewUser, sessionUser, type User } from "./users.ts";
-import { createConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
+import { createConfig, deleteConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
 import {
   CONFIG_DIR,
   createInitFile,
@@ -175,6 +177,11 @@ for (const [kind, base] of [["item", "/api/items"], ["group", "/api/groups"]] as
     return c.json(
       await updateConfig(kind, c.req.param("type"), c.req.param("id"), version as number, item, members, c.var.user.email),
     );
+  });
+
+  app.delete(`${base}/:type/:id`, async (c) => {
+    await deleteConfig(kind, c.req.param("type"), c.req.param("id"));
+    return c.body(null, 204);
   });
 }
 

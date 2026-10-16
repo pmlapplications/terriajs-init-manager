@@ -885,6 +885,10 @@ fieldset.field > legend + * {
   max-width: 100%;
 }
 
+.table-filters .toggle {
+  margin-bottom: 0;
+}
+
 .table-wrap.loading,
 .members-panel .loading {
   opacity: 0.6;
@@ -933,6 +937,10 @@ th[aria-sort] .sort-indicator {
 
 .catalog-table td.row-actions {
   white-space: nowrap;
+}
+
+.catalog-table td.row-actions .icon-btn + .icon-btn {
+  margin-left: 4px;
 }
 
 .visually-hidden {

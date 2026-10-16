@@ -94,6 +94,56 @@ describe("CatalogPage", () => {
     expect(await screen.findByText('Can\'t sort by "x"')).toBeInTheDocument();
   });
 
+  it("filters to orphaned members", async () => {
+    const { last } = setup();
+    await screen.findByText("Ocean");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Orphaned only/ }));
+    await waitFor(() => expect(last().orphaned).toBe("true"));
+    await userEvent.click(screen.getByRole("button", { name: /Clear filters/ }));
+    await waitFor(() => expect(last().orphaned).toBeUndefined());
+    expect(screen.getByRole("checkbox", { name: /Orphaned only/ })).not.toBeChecked();
+  });
+
+  it("deletes a member after confirming, and reloads the page", async () => {
+    const { calls } = mockFetch({
+      "GET /api/members": { items: [memberEntry({ id: "g1", type: "group", kind: "group", name: "Ocean", memberCount: 3 })], total: 1, page: 1, pageSize: 25 },
+      "DELETE /api/groups/group/g1": () => json(null, 204),
+    });
+    localStorage.setItem("tlm.group.record", JSON.stringify({ id: "g1", version: 2, name: "Ocean" }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(<CatalogPage onOpen={() => {}} onDuplicate={() => {}} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Delete Ocean" }));
+    expect(confirm).toHaveBeenLastCalledWith("Delete the group “Ocean”? It is also removed from any groups it is in. Its 3 members are kept.");
+    expect(calls.filter((c) => c.method === "DELETE")).toEqual([]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete Ocean" }));
+    expect(await screen.findByText("Deleted “Ocean”")).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "DELETE").map((c) => c.url)).toEqual(["/api/groups/group/g1"]);
+    await waitFor(() => expect(calls.filter((c) => c.url.startsWith("/api/members"))).toHaveLength(2));
+    // The editor's draft of it can no longer be saved over it.
+    expect(localStorage.getItem("tlm.group.record")).toBeNull();
+  });
+
+  it("shows why a delete failed", async () => {
+    mockFetch({
+      "GET /api/members": { items: [memberEntry()], total: 1, page: 1, pageSize: 25 },
+      "DELETE /api/items/wms/m1": () => json({ error: "“Sea surface temperature” is used by the init file “Atlas”" }, 409),
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<CatalogPage onOpen={() => {}} onDuplicate={() => {}} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Delete Sea surface temperature" }));
+    expect(await screen.findByText(/is used by the init file “Atlas”/)).toBeInTheDocument();
+  });
+
+  it("disables deleting members that init files use", async () => {
+    setup(2, [memberEntry({ initFileCount: 2 }), memberEntry({ id: "m2", name: "Unused" })]);
+    const used = await screen.findByRole("button", { name: "Delete Sea surface temperature" });
+    expect(used).toBeDisabled();
+    expect(used).toHaveAttribute("title", "Used by 2 init files; remove it from them to delete it");
+    expect(screen.getByRole("button", { name: "Delete Unused" })).toBeEnabled();
+  });
+
   it("shows the description under the name", async () => {
     setup(1, [memberEntry({ description: "Daily SST" })]);
     const row = (await screen.findByText("Sea surface temperature")).closest("tr")!;

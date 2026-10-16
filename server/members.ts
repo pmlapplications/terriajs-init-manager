@@ -223,6 +223,23 @@ async function fetchConfig(db: pg.Pool | pg.PoolClient, kind: MemberKind, type: 
   return config;
 }
 
+/**
+ * SQL selecting the ids of the init files that use a member: those with it,
+ * or a group containing it at any depth, in their catalog, or with it on their
+ * workbench. `member` is an SQL expression for the member's id.
+ */
+const initFilesUsing = (member: string) => `
+  select c.init_file_id from init_file_catalog c
+  where c.member_id in (
+    with recursive ancestors(id) as (
+      select ${member}
+      union
+      select gm.parent_id from group_membership gm join ancestors a on gm.child_id = a.id
+    )
+    select id from ancestors)
+  union
+  select w.init_file_id from init_file_workbench w where w.member_id = ${member}`;
+
 const notFound = (type: string, id: string) => new ApiError(404, `No ${type} config with id ${id}`);
 
 function checkId(type: string, id: string) {
@@ -314,12 +331,44 @@ export async function updateConfig(
   });
 }
 
+/**
+ * Deletes an item or group. Refused while an init file uses it (see
+ * initFilesUsing). Deleting a group removes it from its parent groups and
+ * unlinks its members, which are kept.
+ */
+export async function deleteConfig(kind: MemberKind, type: string, id: string): Promise<void> {
+  checkId(type, id);
+  await checkType(kind, type);
+  await transaction(async (client) => {
+    // Locking the row stops an init file or group linking to it until we're done.
+    const { rows } = await client.query<{ name: string }>("select name from catalog_member where id = $1 and type = $2 for update", [
+      id,
+      type,
+    ]);
+    if (!rows[0]) throw notFound(type, id);
+    const { rows: files } = await client.query<{ name: string }>(
+      `select f.name from init_file f where f.id in (${initFilesUsing("$1::uuid")}) order by lower(f.name)`,
+      [id],
+    );
+    if (files.length) {
+      const names = files.map((f) => `“${f.name}”`).join(", ");
+      throw new ApiError(
+        409,
+        `“${rows[0].name}” is used by the init file${files.length === 1 ? "" : "s"} ${names}; remove it, or the groups containing it, from ${files.length === 1 ? "that file" : "them"} before deleting it`,
+      );
+    }
+    await client.query("delete from catalog_member where id = $1", [id]);
+  });
+}
+
 export interface MemberListEntry extends ItemConfigSummary {
   kind: MemberKind;
   description: string | null;
   updatedBy: string | null;
   /** Groups only: number of direct members. */
   memberCount: number | null;
+  /** Number of init files using the member, directly or through a group; it can only be deleted when 0. */
+  initFileCount: number;
 }
 
 export interface MemberListPage {
@@ -356,7 +405,8 @@ function positiveInt(value: string | undefined, name: string, fallback: number, 
  * url and description; `kind` is "item" or "group" (default both); `type` is a
  * comma-separated list of types; `memberOf` limits to the types a group type
  * may contain; `within` is a comma-separated list of group ids, limiting to
- * their members at any depth; `published` is "true" or "false".
+ * their members at any depth; `published` is "true" or "false"; `orphaned`
+ * "true" limits to members in no group and no init file ("false" to the rest).
  */
 export async function listMembers(query: Record<string, string | undefined>): Promise<MemberListPage> {
   const page = positiveInt(query.page, "page", 1);
@@ -406,13 +456,24 @@ export async function listMembers(query: Record<string, string | undefined>): Pr
     params.push(query.published === "true");
     where.push(`m.is_published = $${params.length}`);
   }
+  if (query.orphaned === "true" || query.orphaned === "false") {
+    const orphaned = `not exists (select 1 from group_membership gm where gm.child_id = m.id)
+      and not exists (select 1 from init_file_catalog c where c.member_id = m.id)
+      and not exists (select 1 from init_file_workbench w where w.member_id = m.id)`;
+    where.push(query.orphaned === "true" ? `(${orphaned})` : `not (${orphaned})`);
+  } else if (query.orphaned !== undefined) {
+    throw new ApiError(400, `"orphaned" must be "true" or "false"`);
+  }
 
   const from = `from catalog_member m join catalog_type t on t.type = m.type where ${where.join(" and ")}`;
   const { rows: countRows } = await pool.query<{ total: number }>(`select count(*)::int as total ${from}`, params);
-  const { rows } = await pool.query<MemberRow & { kind: MemberKind; updated_by: string | null; member_count: number | null }>(
+  const { rows } = await pool.query<
+    MemberRow & { kind: MemberKind; updated_by: string | null; member_count: number | null; init_file_count: number }
+  >(
     `select m.id, m.type, t.kind, m.terria_id, m.name, m.description, m.url, m.is_published, m.version, m.updated_at, m.updated_by,
             case when t.kind = 'group'
-                 then (select count(*)::int from group_membership gm where gm.parent_id = m.id) end as member_count
+                 then (select count(*)::int from group_membership gm where gm.parent_id = m.id) end as member_count,
+            (select count(*)::int from (${initFilesUsing("m.id")}) u) as init_file_count
      ${from}
      order by ${SORT_COLUMNS[sort]} ${dir} nulls last, m.id
      limit ${pageSize} offset ${(page - 1) * pageSize}`,
@@ -425,6 +486,7 @@ export async function listMembers(query: Record<string, string | undefined>): Pr
       description: row.description,
       updatedBy: row.updated_by,
       memberCount: row.member_count,
+      initFileCount: row.init_file_count,
     })),
     total: countRows[0].total,
     page,
