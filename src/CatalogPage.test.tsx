@@ -23,6 +23,11 @@ describe("CatalogPage", () => {
     expect(last()).toEqual({ sort: "updatedAt", dir: "desc", page: "1", pageSize: "25" });
   });
 
+  it("links to Create New", async () => {
+    setup();
+    expect(await screen.findByRole("link", { name: "Create New" })).toHaveAttribute("href", "#/new");
+  });
+
   it("opens and duplicates rows", async () => {
     const { onOpen, onDuplicate } = setup();
     await userEvent.click(await screen.findByRole("button", { name: "Sea surface temperature" }));

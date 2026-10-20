@@ -172,7 +172,12 @@ export function CatalogPage({
   return (
     <main className="page wide-page">
       <section className="section">
-        <h2>Catalogue Groups and Items</h2>
+        <div className="preview-head">
+          <h2>Catalogue Groups and Items</h2>
+          <a className="btn primary" href="#/new">
+            Create New
+          </a>
+        </div>
 
         <div className="table-filters">
           <input

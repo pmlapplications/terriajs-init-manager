@@ -35,7 +35,7 @@ files.
 
 ## Creating an item or group
 
-**Create New** shows every catalog type Terria documents, grouped by kind of data: groups,
+**Create New**, at the top of the catalogue page, shows every catalog type Terria documents, grouped by kind of data: groups,
 imagery and map services, vector features, tables and charts, 3D and terrain, and other. Type in
 the filter box to find a type by name (for example `wms`, `WebMapService` or `csv`), then click it
 to open its editor.

@@ -12,6 +12,11 @@ import { WORLD, toBounds, viewRect, type Rect } from "./camera";
 
 export type { Rect } from "./camera";
 
+const TILE_SIZE = 256;
+const ZOOM_SNAP = 0.25;
+/** The world as Web Mercator tiles show it. */
+const WORLD_BOUNDS = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
+
 export interface MapCamera {
   key: string;
   label: string;
@@ -29,11 +34,17 @@ export function CameraMap({ cameras }: { cameras: MapCamera[] }) {
   const startRect = useRef(cameras.find((c) => c.rect)?.rect ?? WORLD);
 
   useEffect(() => {
-    const m = L.map(container.current!, { worldCopyJump: true, zoomSnap: 0.25 });
+    // One world only: no repeated tiles, and no panning past its edges.
+    const m = L.map(container.current!, { zoomSnap: ZOOM_SNAP, maxBounds: WORLD_BOUNDS, maxBoundsViscosity: 1 });
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
+      noWrap: true,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(m);
+    // Never zoom out so far that the world is narrower than the map.
+    const fitWorld = () => m.setMinZoom(Math.max(0, Math.ceil(Math.log2(m.getSize().x / TILE_SIZE) / ZOOM_SNAP) * ZOOM_SNAP));
+    fitWorld();
+    m.on("resize", fitWorld);
     m.fitBounds(toBounds(startRect.current));
     map.current = m;
     layers.current = L.layerGroup().addTo(m);
@@ -50,7 +61,12 @@ export function CameraMap({ cameras }: { cameras: MapCamera[] }) {
     group.clearLayers();
     for (const c of cameras) {
       if (!c.rect) continue;
-      L.rectangle(toBounds(c.rect), { color: c.color, weight: 2, fillOpacity: 0.08 }).bindTooltip(c.label).addTo(group);
+      // A box crossing the antimeridian is drawn in two parts, one at each edge of the world.
+      const { west, east } = c.rect;
+      const parts = east < west ? [{ ...c.rect, east: 180 }, { ...c.rect, west: -180 }] : [c.rect];
+      for (const part of parts) {
+        L.rectangle(toBounds(part), { color: c.color, weight: 2, fillOpacity: 0.08 }).bindTooltip(c.label).addTo(group);
+      }
     }
   }, [cameras]);
 
