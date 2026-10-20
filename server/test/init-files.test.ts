@@ -317,6 +317,51 @@ describe("test mode", () => {
   });
 });
 
+describe("copying an init file", () => {
+  it("copies its settings, catalog and workbench, unpublished, with a free file name", async () => {
+    const { item, group } = await catalog();
+    const other = await createGroup(client, { name: "Land" });
+    const file = await createInitFile(client, {
+      slug: "ocean",
+      name: "Ocean",
+      description: "Sea maps",
+      config: { homeCamera: HOME_CAMERA, viewerMode: "2d" },
+      catalog: [other.id, group.id],
+      workbench: [item.id],
+    });
+    await client.post(`/api/init-files/${file.id}/publish`);
+
+    const res = await client.post(`/api/init-files/${file.id}/copy`);
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({
+      slug: "ocean-copy",
+      name: "Copy of Ocean",
+      description: "Sea maps",
+      config: { homeCamera: HOME_CAMERA, viewerMode: "2d" },
+      version: 1,
+      updatedBy: email,
+      published: null,
+      test: null,
+    });
+    expect(res.body.id).not.toBe(file.id);
+    expect(res.body.catalog.map((m: { id: string }) => m.id)).toEqual([other.id, group.id]);
+    expect(res.body.workbench.map((m: { id: string }) => m.id)).toEqual([item.id]);
+
+    // Further copies take the next free name; copying a copy works too.
+    expect((await client.post(`/api/init-files/${file.id}/copy`)).body.slug).toBe("ocean-copy-2");
+    expect((await client.post(`/api/init-files/${res.body.id}/copy`)).body).toMatchObject({ slug: "ocean-copy-copy", name: "Copy of Copy of Ocean" });
+    expect((await client.post(`/api/init-files/${file.id}/copy`)).body.slug).toBe("ocean-copy-3");
+
+    // The original is unchanged.
+    expect((await client.get(`/api/init-files/${file.id}`)).body).toMatchObject({ slug: "ocean", version: 1, published: { path: "/config/ocean.json" } });
+  });
+
+  it("404s a missing init file", async () => {
+    expect((await client.post(`/api/init-files/${MISSING}/copy`)).status).toBe(404);
+    expect((await client.post("/api/init-files/nope/copy")).status).toBe(404);
+  });
+});
+
 describe("deleting a published init file", () => {
   it("is refused until it is unpublished", async () => {
     const file = await createInitFile(client, { slug: "bye", name: "Bye" });

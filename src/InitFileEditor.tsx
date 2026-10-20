@@ -8,6 +8,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
+  copyInitFile,
   deleteInitFile,
   exportInitFile,
   initFileDownloadUrl,
@@ -187,6 +188,29 @@ export function InitFileEditor({ id }: { id: string | null }) {
     }
   };
 
+  // Copies the saved version and opens the copy.
+  const copy = async () => {
+    if (!record) return;
+    if (
+      dirty &&
+      !(await confirmDialog({
+        title: "Copy without your changes?",
+        message: "The copy is made from the last saved version. Your unsaved changes aren't included, and are lost when the copy opens.",
+        confirmLabel: "Copy saved version",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    setMessage(null);
+    try {
+      const created = await copyInitFile(record.id);
+      location.hash = `#/init-files/${created.id}`;
+    } catch (e) {
+      setMessage({ level: "error", text: (e as Error).message });
+    }
+  };
+
   const remove = async () => {
     const removed = outputs.test ? ` Its test copy (${outputs.test.path}) is removed;` : "";
     if (!record) return;
@@ -260,6 +284,9 @@ export function InitFileEditor({ id }: { id: string | null }) {
               <a className="btn" href={initFileDownloadUrl(record.id)} download title="Download the last saved version">
                 Download JSON
               </a>
+              <button type="button" className="btn" title="Make an unpublished copy of the last saved version, and open it" onClick={copy}>
+                Copy
+              </button>
               <button
                 type="button"
                 className="btn danger"

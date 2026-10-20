@@ -9,6 +9,13 @@ const PATHS = {
       <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
     </>
   ),
+  download: (
+    <>
+      <path d="M12 4v11" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M4 19h16" />
+    </>
+  ),
   trash: (
     <>
       <path d="M4 7h16" />

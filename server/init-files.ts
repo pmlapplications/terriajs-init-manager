@@ -277,6 +277,47 @@ export async function updateInitFile(id: string, version: number, body: unknown,
   });
 }
 
+/**
+ * Copies a saved init file: its settings, catalog and workbench, named "Copy
+ * of …" with the first free file name of <slug>-copy, <slug>-copy-2, .... The
+ * copy is neither published nor in test mode.
+ */
+export async function copyInitFile(id: string, user: string | null): Promise<InitFile> {
+  checkId(id);
+  return transaction(async (client) => {
+    const { rows } = await client.query<{ slug: string; name: string; description: string | null; config: JsonObject }>(
+      "select slug, name, description, config from init_file where id = $1 for share",
+      [id],
+    );
+    if (!rows[0]) throw notFound(id);
+    const source = rows[0];
+
+    const base = `${source.slug}-copy`;
+    const { rows: taken } = await client.query<{ slug: string }>("select slug from init_file where slug = $1 or slug like $2", [
+      base,
+      `${base.replace(/[\\%_]/g, "\\$&")}-%`,
+    ]);
+    const used = new Set(taken.map((r) => r.slug));
+    let slug = base;
+    for (let n = 2; used.has(slug); n++) slug = `${base}-${n}`;
+
+    const { rows: created } = await client.query<{ id: string }>(
+      `insert into init_file (slug, name, description, config, created_by, updated_by)
+       values ($1, $2, $3, $4, $5, $5)
+       returning id`,
+      [slug, `Copy of ${source.name}`, source.description, source.config, user],
+    );
+    for (const table of ["init_file_catalog", "init_file_workbench"] as const) {
+      await client.query(
+        `insert into ${table} (init_file_id, member_id, sort_order)
+         select $2, member_id, sort_order from ${table} where init_file_id = $1`,
+        [id, created[0].id],
+      );
+    }
+    return (await fetchInitFile(client, created[0].id))!;
+  });
+}
+
 /** Deletes an init file and its test copy. Refused while it is published. */
 export async function deleteInitFile(id: string): Promise<void> {
   checkId(id);

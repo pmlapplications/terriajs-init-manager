@@ -127,6 +127,27 @@ describe("InitFileEditor: existing file", () => {
     expect(await screen.findByText("No init file with id f1")).toBeInTheDocument();
   });
 
+  it("copies the saved version and opens the copy", async () => {
+    const { calls } = await openFile(initFile(), { "POST /api/init-files/f1/copy": () => json(initFile({ id: "f2", name: "Copy of Ocean" }), 201) });
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+    await waitFor(() => expect(location.hash).toBe("#/init-files/f2"));
+    expect(dialogOpen()).toBe(false);
+    expect(calls.some((c) => c.method === "POST" && c.url === "/api/init-files/f1/copy")).toBe(true);
+  });
+
+  it("asks before copying when there are unsaved changes", async () => {
+    const { calls } = await openFile(initFile(), { "POST /api/init-files/f1/copy": () => json(initFile({ id: "f2" }), 201) });
+    await userEvent.type(field("Name"), "!");
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+    const dialog = await openDialog();
+    expect(dialog.getByText(/unsaved changes aren't included/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Copy saved version" }));
+    await waitFor(() => expect(location.hash).toBe("#/init-files/f2"));
+  });
+
   it("deletes after confirming, mentioning the test copy", async () => {
     const test = output({ path: "/config/test/f1.json" });
     const { calls } = await openFile(initFile({ test }), { "DELETE /api/init-files/f1": () => json(null, 204) });

@@ -114,6 +114,7 @@ catalogCount, version, updatedAt, updatedBy, published, test }`:
 | `POST` | `/api/init-files` | Create one: `{ "slug", "name", "description", "config", "catalog", "workbench" }`, with `catalog` an ordered array of group ids and `workbench` an ordered array of ids of items inside those groups. |
 | `PUT` | `/api/init-files/:id` | Update one: the same body plus `version`. If test mode is on, the test file is rewritten. |
 | `DELETE` | `/api/init-files/:id` | Delete one, and its test file. Its groups and items are kept. `409` while it is published. |
+| `POST` | `/api/init-files/:id/copy` | Copy the saved init file as "Copy of …", with the first free file name of `<slug>-copy`, `<slug>-copy-2`, .... The copy is unpublished and not in test mode. Returns it, `201`. |
 | `GET` | `/api/init-files/:id/export` | The finished init file JSON, with published members only. Add `?download` to download it as `<slug>.json`. |
 | `POST` | `/api/init-files/:id/publish` | Publish: write the finished JSON to `CONFIG_DIR/<slug>.json`, replacing any earlier copy (and removing one under an old file name). `409` if another init file is published under that name. Returns the init file. |
 | `DELETE` | `/api/init-files/:id/publish` | Unpublish: delete the published file. |

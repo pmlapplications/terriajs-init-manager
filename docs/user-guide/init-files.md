@@ -60,6 +60,14 @@ file since you opened it.
 **Exported JSON** at the bottom of the page shows the last saved version as Terria will load it,
 and **Download JSON** saves it as `<file name>.json`.
 
+**Copy** makes a new init file from the last saved version, with the same settings, catalog and
+workbench, and opens it. It is named "Copy of …" with the file name `<file name>-copy` (or
+`-copy-2` and so on if that is taken), and is not published. If you have unsaved changes, you are
+asked first, since they aren't copied.
+
+The init files list has the same actions as icons at the end of each row: download, copy and
+delete.
+
 ## Publishing
 
 Each init file is either **Published** or **Not published**.
@@ -96,5 +104,5 @@ Unlike the published file, the test copy is rewritten every time you save, so a 
 shows your latest saved changes. Turning test mode off deletes the test copy. Test mode and
 publishing are independent of each other.
 
-A published init file can't be deleted; unpublish it first. Deleting an init file removes its
-test copy. Its groups and items are kept.
+A published init file can't be deleted, from the list or its page; unpublish it first. Deleting
+an init file removes its test copy. Its groups and items are kept.

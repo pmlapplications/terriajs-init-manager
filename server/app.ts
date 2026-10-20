@@ -37,6 +37,7 @@
 //                                      with catalog (groups) and workbench (items) as ordered member ids
 //   PUT    /api/init-files/:id         update; the same body plus { version }
 //   DELETE /api/init-files/:id         delete, unless published
+//   POST   /api/init-files/:id/copy    copy it as "Copy of …", unpublished, with a free file name
 //   GET    /api/init-files/:id/export  the finished init file JSON; ?download to save it as <slug>.json
 //   POST   /api/init-files/:id/publish  publish: write the finished JSON to CONFIG_DIR/<slug>.json
 //   DELETE /api/init-files/:id/publish  unpublish: delete that file
@@ -59,6 +60,7 @@ import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseN
 import { bulkUpdateConfigs, createConfig, deleteConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
 import {
   CONFIG_DIR,
+  copyInitFile,
   createInitFile,
   deleteInitFile,
   exportInitFile,
@@ -208,6 +210,8 @@ app.delete("/api/init-files/:id", async (c) => {
   await deleteInitFile(c.req.param("id"));
   return c.body(null, 204);
 });
+
+app.post("/api/init-files/:id/copy", async (c) => c.json(await copyInitFile(c.req.param("id"), c.var.user.email), 201));
 
 app.get("/api/init-files/:id/export", async (c) => {
   const { slug, content } = await exportInitFile(c.req.param("id"));

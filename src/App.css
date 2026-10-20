@@ -455,6 +455,13 @@ fieldset.field > legend + * {
   margin: auto;
 }
 
+/* A link styled as an icon button, e.g. a download. */
+a.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: top;
+}
+
 .icon-btn:disabled {
   opacity: 0.35;
   cursor: default;

@@ -266,6 +266,9 @@ export const saveInitFile = (file: InitFileInput, existing?: { id: string; versi
     ? request<InitFile>(initFilePath(existing.id), { method: "PUT", body: JSON.stringify({ ...file, version: existing.version }) })
     : request<InitFile>(initFilePath(), { method: "POST", body: JSON.stringify(file) });
 
+/** Copies the saved init file as "Copy of …", unpublished, with a free file name. */
+export const copyInitFile = (id: string) => request<InitFile>(`${initFilePath(id)}/copy`, { method: "POST" });
+
 /** Deletes an init file and its test copy; refused with status 409 while it is published. */
 export const deleteInitFile = (id: string) => request<null>(initFilePath(id), { method: "DELETE" });
 

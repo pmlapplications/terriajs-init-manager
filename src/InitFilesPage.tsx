@@ -1,16 +1,52 @@
 // Lists the stored init files, each a complete Terria init file JSON built
-// from saved catalog groups.
+// from saved catalog groups. Any of them can be downloaded or copied from here,
+// and deleted unless published.
 
 import { useEffect, useState } from "react";
-import { initFileDownloadUrl, listInitFiles, type InitFileSummary } from "./api";
+import { copyInitFile, deleteInitFile, initFileDownloadUrl, listInitFiles, type InitFileSummary } from "./api";
+import { confirmDialog } from "./dialogs";
+import { Icon } from "./Icon";
 
 export function InitFilesPage() {
   const [files, setFiles] = useState<InitFileSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     listInitFiles().then(setFiles, (e: Error) => setError(e.message));
   }, []);
+
+  // Opens the copy, so it can be renamed straight away.
+  const copy = async (file: InitFileSummary) => {
+    setError(null);
+    setMessage(null);
+    try {
+      const created = await copyInitFile(file.id);
+      location.assign(`#/init-files/${created.id}`);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const remove = async (file: InitFileSummary) => {
+    const removed = file.test ? ` Its test copy (${file.test.path}) is removed;` : "";
+    const ok = await confirmDialog({
+      title: "Delete this init file?",
+      message: `Delete the init file “${file.name}” (${file.slug}.json)?${removed} its catalog groups and items are kept.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteInitFile(file.id);
+      setFiles((prev) => prev?.filter((f) => f.id !== file.id) ?? null);
+      setMessage(`Deleted “${file.name}”`);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   return (
     <main className="page wide-page">
@@ -25,6 +61,7 @@ export function InitFilesPage() {
           Each init file is a complete Terria catalog: its top-level groups, the starting map view, base maps and settings. Publish one
           to serve it at /config/&lt;file name&gt;.json, or download it and put it in the map's init folder.
         </p>
+        {message && <p className="save-message ok">{message}</p>}
         {error && <p className="issues-inline error">{error}</p>}
         {!files && !error && <p className="hint">Loading…</p>}
         {files && (
@@ -80,9 +117,34 @@ export function InitFilesPage() {
                     <td title={new Date(f.updatedAt).toLocaleString()}>{new Date(f.updatedAt).toLocaleDateString()}</td>
                     <td>{f.updatedBy}</td>
                     <td className="row-actions">
-                      <a className="btn small" href={initFileDownloadUrl(f.id)} download>
-                        Download
+                      <a
+                        className="icon-btn"
+                        href={initFileDownloadUrl(f.id)}
+                        download
+                        title="Download the init file JSON"
+                        aria-label={`Download ${f.name}`}
+                      >
+                        <Icon name="download" />
                       </a>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Copy: make an unpublished copy and open it"
+                        aria-label={`Copy ${f.name}`}
+                        onClick={() => copy(f)}
+                      >
+                        <Icon name="copy" />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        disabled={f.published !== null}
+                        title={f.published ? "Published init files can't be deleted; unpublish it first" : "Delete this init file"}
+                        aria-label={`Delete ${f.name}`}
+                        onClick={() => remove(f)}
+                      >
+                        <Icon name="trash" />
+                      </button>
                     </td>
                   </tr>
                 ))}
