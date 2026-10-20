@@ -277,13 +277,22 @@ export async function updateInitFile(id: string, version: number, body: unknown,
   });
 }
 
-/** Deletes an init file and any files it has in the config folder. */
+/** Deletes an init file and its test copy. Refused while it is published. */
 export async function deleteInitFile(id: string): Promise<void> {
   checkId(id);
   await transaction(async (client) => {
-    const { rows } = await client.query<{ file_path: string }>("select file_path from init_file_output where init_file_id = $1", [id]);
-    const { rowCount } = await client.query("delete from init_file where id = $1", [id]);
-    if (!rowCount) throw notFound(id);
+    // Locking the row stops it being published until we're done.
+    const { rows: files } = await client.query<{ name: string }>("select name from init_file where id = $1 for update", [id]);
+    if (!files[0]) throw notFound(id);
+    const { rows } = await client.query<{ target: OutputTarget; file_path: string }>(
+      "select target, file_path from init_file_output where init_file_id = $1",
+      [id],
+    );
+    const published = rows.find((r) => r.target === "published");
+    if (published) {
+      throw new ApiError(409, `“${files[0].name}” is published at /config/${published.file_path}; unpublish it before deleting it`);
+    }
+    await client.query("delete from init_file where id = $1", [id]);
     for (const r of rows) await removeConfigFile(r.file_path);
   });
 }

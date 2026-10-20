@@ -172,7 +172,7 @@ export function CatalogPage({
   return (
     <main className="page wide-page">
       <section className="section">
-        <h2>Catalog items and groups</h2>
+        <h2>Catalogue Groups and Items</h2>
 
         <div className="table-filters">
           <input

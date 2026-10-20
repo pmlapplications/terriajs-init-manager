@@ -19,6 +19,10 @@ All notable changes to TerriaJS Init Manager. The format follows
 - A GitHub Actions workflow matching the GitLab CI pipeline: lint, tests, build, docs, GitHub
   Pages and release tag checks.
 
+### Changed
+
+- Published init files can no longer be deleted; unpublish them first.
+
 ## [0.1.0] - 2026-10-09
 
 First versioned release.

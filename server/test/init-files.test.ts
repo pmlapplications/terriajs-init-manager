@@ -318,12 +318,23 @@ describe("test mode", () => {
 });
 
 describe("deleting a published init file", () => {
-  it("removes its published and test files", async () => {
-    const file = await createInitFile(client, { slug: "bye" });
+  it("is refused until it is unpublished", async () => {
+    const file = await createInitFile(client, { slug: "bye", name: "Bye" });
     await client.post(`/api/init-files/${file.id}/publish`);
+    const res = await client.delete(`/api/init-files/${file.id}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/“Bye” is published at \/config\/bye\.json/);
+    expect(existsSync(onDisk("bye.json"))).toBe(true);
+    expect((await client.get(`/api/init-files/${file.id}`)).status).toBe(200);
+
+    await client.delete(`/api/init-files/${file.id}/publish`);
+    expect((await client.delete(`/api/init-files/${file.id}`)).status).toBe(204);
+  });
+
+  it("removes the test copy", async () => {
+    const file = await createInitFile(client, {});
     await client.post(`/api/init-files/${file.id}/test`);
-    await client.delete(`/api/init-files/${file.id}`);
-    expect(existsSync(onDisk("bye.json"))).toBe(false);
+    expect((await client.delete(`/api/init-files/${file.id}`)).status).toBe(204);
     expect(existsSync(onDisk(`test/${file.id}.json`))).toBe(false);
   });
 });

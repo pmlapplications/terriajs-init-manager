@@ -96,5 +96,5 @@ Unlike the published file, the test copy is rewritten every time you save, so a 
 shows your latest saved changes. Turning test mode off deletes the test copy. Test mode and
 publishing are independent of each other.
 
-Deleting an init file removes both its published file and its test copy. Its groups and items
-are kept.
+A published init file can't be deleted; unpublish it first. Deleting an init file removes its
+test copy. Its groups and items are kept.

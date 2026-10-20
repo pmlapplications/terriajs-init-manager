@@ -34,7 +34,7 @@
 //   POST   /api/init-files             create; body { slug, name, description, config, catalog, workbench }
 //                                      with catalog (groups) and workbench (items) as ordered member ids
 //   PUT    /api/init-files/:id         update; the same body plus { version }
-//   DELETE /api/init-files/:id         delete
+//   DELETE /api/init-files/:id         delete, unless published
 //   GET    /api/init-files/:id/export  the finished init file JSON; ?download to save it as <slug>.json
 //   POST   /api/init-files/:id/publish  publish: write the finished JSON to CONFIG_DIR/<slug>.json
 //   DELETE /api/init-files/:id/publish  unpublish: delete that file

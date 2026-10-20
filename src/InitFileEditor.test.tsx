@@ -120,13 +120,19 @@ describe("InitFileEditor: existing file", () => {
     expect(await screen.findByText("No init file with id f1")).toBeInTheDocument();
   });
 
-  it("deletes after confirming, mentioning published files", async () => {
-    const { calls } = await openFile(initFile({ published: output() }), { "DELETE /api/init-files/f1": () => json(null, 204) });
+  it("deletes after confirming, mentioning the test copy", async () => {
+    const test = output({ path: "/config/test/f1.json" });
+    const { calls } = await openFile(initFile({ test }), { "DELETE /api/init-files/f1": () => json(null, 204) });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(confirm.mock.calls[0][0]).toContain("/config/ocean.json");
+    expect(confirm.mock.calls[0][0]).toContain("/config/test/f1.json");
     await waitFor(() => expect(location.hash).toBe("#/init-files"));
     expect(calls.some((c) => c.method === "DELETE")).toBe(true);
+  });
+
+  it("can't delete a published file", async () => {
+    await openFile(initFile({ published: output() }));
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
   });
 
   it("shows the exported JSON on request", async () => {

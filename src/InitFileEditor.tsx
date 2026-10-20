@@ -187,8 +187,7 @@ export function InitFileEditor({ id }: { id: string | null }) {
   };
 
   const remove = async () => {
-    const files = [outputs.published, outputs.test].filter((o) => o !== null).map((o) => o.path);
-    const removed = files.length ? ` Its published and test files (${files.join(", ")}) are removed;` : "";
+    const removed = outputs.test ? ` Its test copy (${outputs.test.path}) is removed;` : "";
     if (!record || !confirm(`Delete the init file “${draft.name}” (${draft.slug}.json)?${removed} its catalog groups and items are kept.`)) return;
     try {
       await deleteInitFile(record.id);
@@ -242,7 +241,13 @@ export function InitFileEditor({ id }: { id: string | null }) {
               <a className="btn" href={initFileDownloadUrl(record.id)} download title="Download the last saved version">
                 Download JSON
               </a>
-              <button type="button" className="btn danger" onClick={remove}>
+              <button
+                type="button"
+                className="btn danger"
+                disabled={outputs.published !== null}
+                title={outputs.published ? "Published init files can't be deleted; unpublish it first" : undefined}
+                onClick={remove}
+              >
                 Delete
               </button>
             </>
