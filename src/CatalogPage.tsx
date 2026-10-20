@@ -4,6 +4,7 @@
 // from here.
 
 import { useEffect, useState } from "react";
+import { confirmDialog } from "./dialogs";
 import { loadRecord, saveRecord } from "./drafts";
 import { deleteConfig, listMembers, type MemberListEntry, type MemberListPage, type MemberListQuery, type MemberSortKey } from "./api";
 import { Icon } from "./Icon";
@@ -71,9 +72,12 @@ function storeState(state: TableState) {
 }
 
 export function CatalogPage({
+  draft = null,
   onOpen,
   onDuplicate,
 }: {
+  /** The editor form last worked on, if it holds a draft; offered as "Continue Editing". */
+  draft?: { type: string; href: string } | null;
   onOpen: (member: MemberListEntry) => void;
   onDuplicate: (member: MemberListEntry) => void;
 }) {
@@ -149,7 +153,13 @@ export function CatalogPage({
       member.kind === "group" && member.memberCount
         ? ` Its ${member.memberCount} member${member.memberCount === 1 ? " is" : "s are"} kept.`
         : "";
-    if (!confirm(`Delete the ${member.kind} “${member.name}”? It is also removed from any groups it is in.${kept}`)) return;
+    const ok = await confirmDialog({
+      title: `Delete this ${member.kind}?`,
+      message: `Delete the ${member.kind} “${member.name}”? It is also removed from any groups it is in.${kept}`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     setError(null);
     setMessage(null);
     try {
@@ -174,9 +184,16 @@ export function CatalogPage({
       <section className="section">
         <div className="preview-head">
           <h2>Catalogue Groups and Items</h2>
-          <a className="btn primary" href="#/new">
-            Create New
-          </a>
+          <div className="actions">
+            {draft && (
+              <a className="btn" href={draft.href}>
+                Continue Editing <b>{typeLabel(draft.type)}</b> form
+              </a>
+            )}
+            <a className="btn primary" href="#/new">
+              Create New
+            </a>
+          </div>
         </div>
 
         <div className="table-filters">

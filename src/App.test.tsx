@@ -2,10 +2,12 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { DialogHost } from "./DialogHost";
 import { loadDraft, loadRecord, saveDraft } from "./drafts";
 import { fieldId } from "./form/paths";
 import { loadModel, type CatalogModel } from "./terria/catalog-ui";
 import { json, mockFetch } from "./test/fetch";
+import { openDialog } from "./test/dialogs";
 import { memberEntry } from "./test/fixtures";
 
 let wms: CatalogModel;
@@ -114,9 +116,14 @@ describe("item editor", () => {
 
   it("starts a new item after confirming", async () => {
     saveDraft("wms", { name: "Old" });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<App model={wms} />);
+    render(
+      <>
+        <App model={wms} />
+        <DialogHost />
+      </>,
+    );
     await userEvent.click(screen.getByRole("button", { name: "New" }));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Clear form" }));
     expect(preview()).toEqual({ type: "wms" });
   });
 

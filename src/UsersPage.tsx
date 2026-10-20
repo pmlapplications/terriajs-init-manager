@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createUser, deleteUser, listUsers, type NewUser, type User } from "./api";
+import { confirmDialog } from "./dialogs";
 
 const MIN_PASSWORD_LENGTH = 10; // matches server/passwords.ts
 
@@ -45,7 +46,13 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
   };
 
   const remove = async (user: User) => {
-    if (!confirm(`Delete ${user.firstName} ${user.lastName} (${user.email})? They will be logged out.`)) return;
+    const ok = await confirmDialog({
+      title: "Delete this user?",
+      message: `Delete ${user.firstName} ${user.lastName} (${user.email})? They will be logged out.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     setError(null);
     setMessage(null);
     try {

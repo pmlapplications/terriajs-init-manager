@@ -1,6 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { DialogHost } from "./DialogHost";
+import { openDialog } from "./test/dialogs";
 import { json, mockFetch } from "./test/fetch";
 import { user } from "./test/fixtures";
 import { UsersPage } from "./UsersPage";
@@ -66,10 +68,16 @@ describe("UsersPage", () => {
 
   it("deletes a user after confirmation", async () => {
     const { calls } = mockFetch({ "GET /api/users": [other, me], "DELETE /api/users/u2": () => json(null, 204) });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<UsersPage currentUser={me} />);
+    render(
+      <>
+        <UsersPage currentUser={me} />
+        <DialogHost />
+      </>,
+    );
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("bob@example.com"));
+    const dialog = await openDialog();
+    expect(dialog.getByText(/bob@example\.com/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("Deleted Bob Babbage")).toBeInTheDocument();
     expect(screen.queryByText("bob@example.com")).not.toBeInTheDocument();
     expect(calls.map((c) => c.method)).toEqual(["GET", "DELETE"]);
@@ -77,9 +85,14 @@ describe("UsersPage", () => {
 
   it("does nothing when deletion is cancelled", async () => {
     const { calls } = mockFetch({ "GET /api/users": [other, me] });
-    vi.spyOn(window, "confirm").mockReturnValue(false);
-    render(<UsersPage currentUser={me} />);
+    render(
+      <>
+        <UsersPage currentUser={me} />
+        <DialogHost />
+      </>,
+    );
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Cancel" }));
     expect(calls).toHaveLength(1);
     expect(screen.getByText("bob@example.com")).toBeInTheDocument();
   });

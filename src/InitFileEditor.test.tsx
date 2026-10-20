@@ -2,7 +2,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { MapCamera } from "./CameraMap";
+import { DialogHost } from "./DialogHost";
 import { InitFileEditor } from "./InitFileEditor";
+import { dialogOpen, openDialog } from "./test/dialogs";
 import { json, mockFetch, type Call } from "./test/fetch";
 import { initFile, memberEntry, memberRef, output } from "./test/fixtures";
 
@@ -24,7 +26,12 @@ const NO_MEMBERS = { items: [], total: 0, page: 1, pageSize: 15 };
 /** Loads an existing init file into the editor. */
 async function openFile(file = initFile(), routes: Record<string, unknown> = {}) {
   const mock = mockFetch({ "GET /api/init-files/f1": file, "GET /api/members": NO_MEMBERS, ...routes });
-  render(<InitFileEditor id="f1" />);
+  render(
+    <>
+      <InitFileEditor id="f1" />
+      <DialogHost />
+    </>,
+  );
   await screen.findByRole("heading", { name: file.name });
   return mock;
 }
@@ -123,9 +130,10 @@ describe("InitFileEditor: existing file", () => {
   it("deletes after confirming, mentioning the test copy", async () => {
     const test = output({ path: "/config/test/f1.json" });
     const { calls } = await openFile(initFile({ test }), { "DELETE /api/init-files/f1": () => json(null, 204) });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(confirm.mock.calls[0][0]).toContain("/config/test/f1.json");
+    const dialog = await openDialog();
+    expect(dialog.getByText(/\/config\/test\/f1\.json/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(location.hash).toBe("#/init-files"));
     expect(calls.some((c) => c.method === "DELETE")).toBe(true);
   });
@@ -184,13 +192,15 @@ describe("InitFileEditor: publishing", () => {
 
   it("unpublishes only after confirming", async () => {
     const { calls } = await openFile(initFile({ published: output() }), { "DELETE /api/init-files/f1/publish": initFile() });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     const row = statusRow("Status");
     await userEvent.click(within(row).getByRole("button", { name: "Unpublish" }));
+    const dialog = await openDialog();
+    expect(dialog.getByText(/\/config\/ocean\.json is deleted/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
     expect(calls.some((c) => c.method === "DELETE")).toBe(false);
     await userEvent.click(within(row).getByRole("button", { name: "Unpublish" }));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Unpublish" }));
     expect(await within(row).findByText("Not published")).toBeInTheDocument();
-    expect(confirm.mock.calls[0][0]).toContain("/config/ocean.json is deleted");
   });
 
   it("turns test mode on and off without confirmation", async () => {
@@ -200,7 +210,6 @@ describe("InitFileEditor: publishing", () => {
       "POST /api/init-files/f1/test": () => ((on = true), initFile({ test: testOutput })),
       "DELETE /api/init-files/f1/test": () => ((on = false), initFile()),
     });
-    const confirm = vi.spyOn(window, "confirm");
     const row = statusRow("Test mode");
     expect(within(row).getByText(/updated every time you save/)).toBeInTheDocument();
     await userEvent.click(within(row).getByRole("button", { name: "Turn on" }));
@@ -209,7 +218,7 @@ describe("InitFileEditor: publishing", () => {
     await userEvent.click(within(row).getByRole("button", { name: "Turn off" }));
     expect(await within(row).findByText("Off")).toBeInTheDocument();
     expect(on).toBe(false);
-    expect(confirm).not.toHaveBeenCalled();
+    expect(dialogOpen()).toBe(false);
     expect(calls.filter((c) => c.url.endsWith("/test")).map((c) => c.method)).toEqual(["POST", "DELETE"]);
   });
 

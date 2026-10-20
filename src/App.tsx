@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { listConfigs, loadConfig, saveConfig, type ItemConfig, type ItemConfigSummary, type MemberRef } from "./api";
+import { confirmDialog } from "./dialogs";
 import { EditorContext, type EditorContextValue } from "./form/context";
 import { fieldId, traitMatches } from "./form/paths";
 import { TraitField } from "./form/TraitField";
@@ -139,8 +140,18 @@ export default function App({ model }: { model: CatalogModel }) {
     setSaveMessage(null);
   };
 
-  const reset = () => {
-    if ((Object.keys(item).length || members.length) && !confirm(`Clear all fields and start a new ${model.type} ${model.kind}?`)) return;
+  const reset = async () => {
+    if (
+      (Object.keys(item).length || members.length) &&
+      !(await confirmDialog({
+        title: `Start a new ${model.kind}?`,
+        message: `Clear all fields and start a new ${model.type} ${model.kind}?`,
+        confirmLabel: "Clear form",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
     replaceItem({}, null);
   };
 
@@ -339,8 +350,13 @@ export default function App({ model }: { model: CatalogModel }) {
             type={model.type}
             kind={model.kind}
             onClose={() => setOpening(false)}
-            onOpen={(config) => {
-              if ((Object.keys(item).length || members.length) && !confirm(`Replace the current form with “${config.name}”?`)) return;
+            onOpen={async (config) => {
+              if (
+                (Object.keys(item).length || members.length) &&
+                !(await confirmDialog({ title: "Replace the form?", message: `Replace the current form with “${config.name}”?`, confirmLabel: "Replace" }))
+              ) {
+                return;
+              }
               replaceItem(config.item, { id: config.id, version: config.version, name: config.name }, config.members);
               setOpening(false);
             }}

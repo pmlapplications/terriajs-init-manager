@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CatalogPage } from "./CatalogPage";
+import { DialogHost } from "./DialogHost";
+import { openDialog } from "./test/dialogs";
 import { json, mockFetch, type Call } from "./test/fetch";
 import { memberEntry } from "./test/fixtures";
 
@@ -26,6 +28,13 @@ describe("CatalogPage", () => {
   it("links to Create New", async () => {
     setup();
     expect(await screen.findByRole("link", { name: "Create New" })).toHaveAttribute("href", "#/new");
+    expect(screen.queryByRole("link", { name: /Continue Editing/ })).not.toBeInTheDocument();
+  });
+
+  it("links back to a draft in the editor", async () => {
+    mockFetch({ "GET /api/members": { items: [], total: 0, page: 1, pageSize: 25 } });
+    render(<CatalogPage draft={{ type: "wms", href: "#/item/wms" }} onOpen={() => {}} onDuplicate={() => {}} />);
+    expect(await screen.findByRole("link", { name: "Continue Editing WebMapService form" })).toHaveAttribute("href", "#/item/wms");
   });
 
   it("opens and duplicates rows", async () => {
@@ -115,14 +124,21 @@ describe("CatalogPage", () => {
       "DELETE /api/groups/group/g1": () => json(null, 204),
     });
     localStorage.setItem("tlm.group.record", JSON.stringify({ id: "g1", version: 2, name: "Ocean" }));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
-    render(<CatalogPage onOpen={() => {}} onDuplicate={() => {}} />);
+    render(
+      <>
+        <CatalogPage onOpen={() => {}} onDuplicate={() => {}} />
+        <DialogHost />
+      </>,
+    );
 
     await userEvent.click(await screen.findByRole("button", { name: "Delete Ocean" }));
-    expect(confirm).toHaveBeenLastCalledWith("Delete the group “Ocean”? It is also removed from any groups it is in. Its 3 members are kept.");
+    const dialog = await openDialog();
+    expect(dialog.getByText("Delete the group “Ocean”? It is also removed from any groups it is in. Its 3 members are kept.")).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
     expect(calls.filter((c) => c.method === "DELETE")).toEqual([]);
 
     await userEvent.click(screen.getByRole("button", { name: "Delete Ocean" }));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("Deleted “Ocean”")).toBeInTheDocument();
     expect(calls.filter((c) => c.method === "DELETE").map((c) => c.url)).toEqual(["/api/groups/group/g1"]);
     await waitFor(() => expect(calls.filter((c) => c.url.startsWith("/api/members"))).toHaveLength(2));
@@ -135,9 +151,14 @@ describe("CatalogPage", () => {
       "GET /api/members": { items: [memberEntry()], total: 1, page: 1, pageSize: 25 },
       "DELETE /api/items/wms/m1": () => json({ error: "“Sea surface temperature” is used by the init file “Atlas”" }, 409),
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<CatalogPage onOpen={() => {}} onDuplicate={() => {}} />);
+    render(
+      <>
+        <CatalogPage onOpen={() => {}} onDuplicate={() => {}} />
+        <DialogHost />
+      </>,
+    );
     await userEvent.click(await screen.findByRole("button", { name: "Delete Sea surface temperature" }));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText(/is used by the init file “Atlas”/)).toBeInTheDocument();
   });
 

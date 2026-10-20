@@ -668,6 +668,20 @@ fieldset.field > legend + * {
   margin-top: 12px;
 }
 
+/* Confirmations and messages (DialogHost.tsx), above any other modal. */
+.dialog-backdrop {
+  z-index: 30;
+}
+
+.modal.dialog {
+  width: min(460px, 100%);
+}
+
+.dialog-message {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
 /* --- Narrow screens ------------------------------------------------------ */
 
 @media (max-width: 1100px) {

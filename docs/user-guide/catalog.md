@@ -40,6 +40,9 @@ imagery and map services, vector features, tables and charts, 3D and terrain, an
 the filter box to find a type by name (for example `wms`, `WebMapService` or `csv`), then click it
 to open its editor.
 
+Beside it, **Continue Editing … form** takes you back to the last form you worked on, with your
+unsaved changes. It only shows while that form has something in it.
+
 If the editor already holds an unsaved draft of that type, you are asked whether to clear it.
 Choose **Cancel** to carry on with the draft.
 

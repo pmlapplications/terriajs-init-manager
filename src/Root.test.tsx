@@ -5,6 +5,7 @@ import { UNAUTHORIZED_EVENT } from "./api";
 import { loadDraft, saveDraft } from "./drafts";
 import Root from "./Root";
 import { json, mockFetch } from "./test/fetch";
+import { openDialog } from "./test/dialogs";
 import { memberEntry, user } from "./test/fixtures";
 
 vi.mock("./CameraMap", () => ({ CameraMap: () => null }));
@@ -97,13 +98,21 @@ describe("Root", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "New init file" })).toBeInTheDocument());
   });
 
+  it("offers to continue the last edited form when it has a draft", async () => {
+    loggedIn();
+    localStorage.setItem("tlm.lastType", JSON.stringify("csv"));
+    saveDraft("csv", { name: "Stations" });
+    render(<Root />);
+    expect(await screen.findByRole("link", { name: "Continue Editing Csv form" })).toHaveAttribute("href", "#/item/csv");
+  });
+
   it("opens the editor for a type from Create New, clearing its draft after confirming", async () => {
     loggedIn({ "GET /api/groups/group/member-types": ["wms"] });
     saveDraft("wms", { name: "Old" });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     location.hash = "#/new";
     render(<Root />);
     await userEvent.click(await screen.findByTitle("WebMapServiceCatalogItem"));
+    await userEvent.click((await openDialog()).getByRole("button", { name: "Start new" }));
     await waitFor(() => expect(location.hash).toBe("#/item/wms"));
     go("#/item/wms");
     expect(await screen.findByText(/"type": "wms"/, { selector: "code" })).toBeInTheDocument();

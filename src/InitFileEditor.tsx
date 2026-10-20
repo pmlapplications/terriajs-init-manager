@@ -22,6 +22,7 @@ import {
   type OutputTarget,
 } from "./api";
 import { CameraMap, type MapCamera, type Rect } from "./CameraMap";
+import { confirmDialog } from "./dialogs";
 import { SLUG, asRect, baseMapIds, cameraMode, rectProblem, slugify, withKey, without, type CameraMode } from "./init-file";
 import { MemberList, MemberSearch } from "./MembersPanel";
 import { groupTypes, itemTypes, typeLabel } from "./terria/catalog-ui";
@@ -188,7 +189,14 @@ export function InitFileEditor({ id }: { id: string | null }) {
 
   const remove = async () => {
     const removed = outputs.test ? ` Its test copy (${outputs.test.path}) is removed;` : "";
-    if (!record || !confirm(`Delete the init file “${draft.name}” (${draft.slug}.json)?${removed} its catalog groups and items are kept.`)) return;
+    if (!record) return;
+    const ok = await confirmDialog({
+      title: "Delete this init file?",
+      message: `Delete the init file “${draft.name}” (${draft.slug}.json)?${removed} its catalog groups and items are kept.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteInitFile(record.id);
       location.hash = "#/init-files";
@@ -200,7 +208,18 @@ export function InitFileEditor({ id }: { id: string | null }) {
   const setOutput = async (target: OutputTarget, on: boolean) => {
     if (!record) return;
     const current = outputs[target];
-    if (!on && target === "published" && !confirm(`Unpublish “${draft.name}”? ${current?.path} is deleted, so maps loading it will stop working.`)) return;
+    if (
+      !on &&
+      target === "published" &&
+      !(await confirmDialog({
+        title: "Unpublish this init file?",
+        message: `Unpublish “${draft.name}”? ${current?.path} is deleted, so maps loading it will stop working.`,
+        confirmLabel: "Unpublish",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
     setOutputBusy(target);
     setMessage(null);
     try {

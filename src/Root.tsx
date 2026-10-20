@@ -10,8 +10,10 @@ import { useEffect, useState } from "react";
 import { currentUser, loadConfig, logout, UNAUTHORIZED_EVENT, type MemberListEntry, type User } from "./api";
 import App from "./App";
 import { CatalogPage } from "./CatalogPage";
+import { DialogHost } from "./DialogHost";
+import { alertDialog, confirmDialog } from "./dialogs";
 import { DocsPage } from "./DocsPage";
-import { clearDraft, hasDraft, loadRecord, saveDraft, saveDraftMembers, saveRecord } from "./drafts";
+import { clearDraft, hasDraft, loadLastType, loadRecord, saveDraft, saveDraftMembers, saveLastType, saveRecord } from "./drafts";
 import { InitFileEditor } from "./InitFileEditor";
 import { InitFilesPage } from "./InitFilesPage";
 import { LoginPage } from "./LoginPage";
@@ -62,9 +64,10 @@ export default function Root() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const route = useRoute();
-  // The item type last edited, so the editor link survives a visit to Users.
-  const [editingType, setEditingType] = useState(route.page === "item" ? route.type : "wms");
+  // The type last edited, for the catalog page's "Continue Editing" button; kept across reloads.
+  const [editingType, setEditingType] = useState(() => (route.page === "item" ? route.type : (loadLastType() ?? "wms")));
   if (route.page === "item" && route.type !== editingType) setEditingType(route.type);
+  useEffect(() => saveLastType(editingType), [editingType]);
   // Bumped by "Create New" to remount the editor with a cleared draft.
   const [generation, setGeneration] = useState(0);
 
@@ -89,8 +92,16 @@ export default function Root() {
     }
   };
 
-  const createNew = (type: string) => {
-    if (!hasDraft(type) || confirm(`Clear the current ${type} form and start a new item? Cancel opens the form as it is.`)) {
+  const createNew = async (type: string) => {
+    if (
+      !hasDraft(type) ||
+      (await confirmDialog({
+        title: "Start a new item?",
+        message: `The ${type} form has unsaved content. Clear it and start a new item, or open the form as it is?`,
+        confirmLabel: "Start new",
+        cancelLabel: "Keep current form",
+      }))
+    ) {
       clearDraft(type);
       setGeneration((g) => g + 1);
     }
@@ -99,7 +110,13 @@ export default function Root() {
 
   const openMember = async (entry: MemberListEntry) => {
     const type = entry.type;
-    if (hasDraft(type) && loadRecord(type)?.id !== entry.id && !confirm(`Replace the current ${type} form with “${entry.name}”?`)) return;
+    if (
+      hasDraft(type) &&
+      loadRecord(type)?.id !== entry.id &&
+      !(await confirmDialog({ title: "Replace the form?", message: `Replace the current ${type} form with “${entry.name}”?`, confirmLabel: "Replace" }))
+    ) {
+      return;
+    }
     try {
       const config = await loadConfig(entry.kind, type, entry.id);
       saveDraft(type, config.item);
@@ -108,7 +125,7 @@ export default function Root() {
       setGeneration((g) => g + 1);
       location.hash = editorHash(type);
     } catch (e) {
-      alert(`Could not open “${entry.name}”: ${(e as Error).message}`);
+      await alertDialog({ title: `Could not open “${entry.name}”`, message: (e as Error).message });
     }
   };
 
@@ -116,7 +133,12 @@ export default function Root() {
   // config. The Terria id and share keys must be unique, so the copy has none.
   const duplicateMember = async (entry: MemberListEntry) => {
     const type = entry.type;
-    if (hasDraft(type) && !confirm(`Replace the current ${type} form with a copy of “${entry.name}”?`)) return;
+    if (
+      hasDraft(type) &&
+      !(await confirmDialog({ title: "Replace the form?", message: `Replace the current ${type} form with a copy of “${entry.name}”?`, confirmLabel: "Replace" }))
+    ) {
+      return;
+    }
     try {
       const config = await loadConfig(entry.kind, type, entry.id);
       const { id: _id, shareKeys: _shareKeys, ...item } = config.item;
@@ -126,12 +148,13 @@ export default function Root() {
       setGeneration((g) => g + 1);
       location.hash = editorHash(type);
     } catch (e) {
-      alert(`Could not duplicate “${entry.name}”: ${(e as Error).message}`);
+      await alertDialog({ title: `Could not duplicate “${entry.name}”`, message: (e as Error).message });
     }
   };
 
   return (
     <>
+      <DialogHost />
       <header className="site-header">
         <a href="#/" className="site-logo">
           <img src="/tim-icon-1024.png" alt="" width={28} height={28} />
@@ -166,7 +189,11 @@ export default function Root() {
       ) : route.page === "users" ? (
         <UsersPage currentUser={user} />
       ) : route.page === "catalog" ? (
-        <CatalogPage onOpen={openMember} onDuplicate={duplicateMember} />
+        <CatalogPage
+          draft={hasDraft(editingType) ? { type: editingType, href: editorHash(editingType) } : null}
+          onOpen={openMember}
+          onDuplicate={duplicateMember}
+        />
       ) : route.page === "new" ? (
         <NewPage onCreate={createNew} />
       ) : route.page === "initFiles" ? (

@@ -52,6 +52,12 @@ export function clearDraft(type: string) {
   store(membersKey(type), null);
 }
 
+const LAST_TYPE_KEY = "tlm.lastType";
+
+/** The type last open in the editor, so the catalog page can offer to go back to it. */
+export const loadLastType = () => loadStored<string | null>(LAST_TYPE_KEY, (v): v is string => typeof v === "string", null);
+export const saveLastType = (type: string) => store(LAST_TYPE_KEY, type);
+
 export const saveDraft = (type: string, item: JsonObject) => store(draftKey(type), item);
 export const saveRecord = (type: string, record: SavedRecord | null) => store(recordKey(type), record);
 export const saveDraftMembers = (type: string, members: MemberRef[]) => store(membersKey(type), members.length ? members : null);
