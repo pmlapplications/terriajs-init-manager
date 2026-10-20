@@ -2,10 +2,10 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { UNAUTHORIZED_EVENT } from "./api";
-import { loadDraft, saveDraft } from "./drafts";
+import { loadDraft, saveDraft, saveSnapshot } from "./drafts";
 import Root from "./Root";
 import { json, mockFetch } from "./test/fetch";
-import { openDialog } from "./test/dialogs";
+import { dialogOpen, openDialog } from "./test/dialogs";
 import { memberEntry, user } from "./test/fixtures";
 
 vi.mock("./CameraMap", () => ({ CameraMap: () => null }));
@@ -129,6 +129,33 @@ describe("Root", () => {
     await waitFor(() => expect(location.hash).toBe("#/item/wms"));
     go("#/item/wms");
     await waitFor(() => expect(loadDraft("wms")).toEqual({ name: "Sea surface temperature", opacity: 0.4 }));
+  });
+
+  it("opens another row straight away when the form has no unsaved changes", async () => {
+    loggedIn({
+      "GET /api/members": { items: [memberEntry()], total: 1, page: 1, pageSize: 25 },
+      "GET /api/items/wms/m1": { id: "m1", type: "wms", name: "Sea surface temperature", version: 2, item: { name: "Sea surface temperature" } },
+    });
+    saveDraft("wms", { name: "Saved layer", opacity: 0.3 });
+    saveSnapshot("wms", { opacity: 0.3, name: "Saved layer" });
+    render(<Root />);
+    await userEvent.click(await screen.findByRole("button", { name: "Sea surface temperature" }));
+    await waitFor(() => expect(location.hash).toBe("#/item/wms"));
+    expect(dialogOpen()).toBe(false);
+    expect(loadDraft("wms")).toEqual({ name: "Sea surface temperature" });
+  });
+
+  it("asks before replacing a form with unsaved changes", async () => {
+    const { calls } = loggedIn({ "GET /api/members": { items: [memberEntry()], total: 1, page: 1, pageSize: 25 } });
+    saveDraft("wms", { name: "Saved layer", opacity: 0.9 });
+    saveSnapshot("wms", { name: "Saved layer", opacity: 0.3 });
+    render(<Root />);
+    await userEvent.click(await screen.findByRole("button", { name: "Sea surface temperature" }));
+    const dialog = await openDialog();
+    expect(dialog.getByText(/has unsaved changes/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+    expect(calls.some((c) => c.url === "/api/items/wms/m1")).toBe(false);
+    expect(loadDraft("wms")).toEqual({ name: "Saved layer", opacity: 0.9 });
   });
 
   it("duplicates a catalog row without its ids", async () => {

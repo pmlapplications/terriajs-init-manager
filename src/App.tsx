@@ -7,7 +7,7 @@ import { TraitField } from "./form/TraitField";
 import { CapabilitiesPanel } from "./form/wmsInputs";
 import type { Capabilities } from "./terria/capabilities";
 import { isPlainObject, setIn, type JsonObject, type Path } from "./terria/traits";
-import { loadDraft, loadDraftMembers, loadRecord, saveDraft, saveDraftMembers, saveRecord, type SavedRecord } from "./drafts";
+import { isUnsaved, loadDraft, loadDraftMembers, loadRecord, saveDraft, saveDraftMembers, saveRecord, saveSnapshot, type SavedRecord } from "./drafts";
 import { MembersPanel } from "./MembersPanel";
 import { validateItem, type Issue } from "./terria/validate";
 import { orderLikeForm, type CatalogModel, type MemberKind } from "./terria/catalog-ui";
@@ -132,6 +132,8 @@ export default function App({ model }: { model: CatalogModel }) {
   };
 
   const replaceItem = (next: JsonObject, nextRecord: SavedRecord | null, nextMembers: MemberRef[] = []) => {
+    // Opened from the database, it starts with no unsaved changes; imported or cleared, it is unsaved.
+    saveSnapshot(model.type, nextRecord && next, nextMembers);
     setItem(orderLikeForm(model, next));
     setMembers(isGroup ? nextMembers : []);
     setRecord(nextRecord);
@@ -142,10 +144,10 @@ export default function App({ model }: { model: CatalogModel }) {
 
   const reset = async () => {
     if (
-      (Object.keys(item).length || members.length) &&
+      isUnsaved(model.type, item, members) &&
       !(await confirmDialog({
         title: `Start a new ${model.kind}?`,
-        message: `Clear all fields and start a new ${model.type} ${model.kind}?`,
+        message: `The form has unsaved changes. Clear all fields and start a new ${model.type} ${model.kind}?`,
         confirmLabel: "Clear form",
         danger: true,
       }))
@@ -161,6 +163,7 @@ export default function App({ model }: { model: CatalogModel }) {
     try {
       const saved = await saveConfig(model.kind, model.type, item, isGroup ? members.map((m) => m.id) : undefined, record ?? undefined);
       setRecord({ id: saved.id, version: saved.version, name: saved.name });
+      saveSnapshot(model.type, item, saved.members ?? members);
       if (isGroup && saved.members) setMembers(saved.members);
       setSaveMessage({ level: "ok", text: `Saved version ${saved.version}` });
     } catch (e) {
@@ -352,8 +355,12 @@ export default function App({ model }: { model: CatalogModel }) {
             onClose={() => setOpening(false)}
             onOpen={async (config) => {
               if (
-                (Object.keys(item).length || members.length) &&
-                !(await confirmDialog({ title: "Replace the form?", message: `Replace the current form with “${config.name}”?`, confirmLabel: "Replace" }))
+                isUnsaved(model.type, item, members) &&
+                !(await confirmDialog({
+                  title: "Replace the form?",
+                  message: `The form has unsaved changes. Replace it with “${config.name}”? Your changes will be lost.`,
+                  confirmLabel: "Replace",
+                }))
               ) {
                 return;
               }

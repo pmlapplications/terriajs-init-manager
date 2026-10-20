@@ -3,12 +3,15 @@ import type { MemberRef } from "./api";
 import {
   clearDraft,
   hasDraft,
+  hasUnsavedChanges,
+  isUnsaved,
   loadDraft,
   loadDraftMembers,
   loadRecord,
   saveDraft,
   saveDraftMembers,
   saveRecord,
+  saveSnapshot,
 } from "./drafts";
 
 const member: MemberRef = { id: "m1", type: "wms", kind: "item", terriaId: null, name: "Layer" };
@@ -69,5 +72,38 @@ describe("drafts", () => {
     });
     expect(() => saveDraft("wms", { name: "A" })).not.toThrow();
     expect(loadDraft("wms")).toEqual({});
+  });
+});
+
+describe("unsaved changes", () => {
+  it("treats an empty form as having nothing to lose", () => {
+    expect(isUnsaved("wms", {}, [])).toBe(false);
+    expect(hasUnsavedChanges("wms")).toBe(false);
+  });
+
+  it("treats a form that was never saved as unsaved", () => {
+    expect(isUnsaved("wms", { name: "A" }, [])).toBe(true);
+  });
+
+  it("compares with the form as last loaded or saved, ignoring key order", () => {
+    saveSnapshot("group", { name: "A", info: [{ name: "x", content: "y" }] }, [member]);
+    expect(isUnsaved("group", { info: [{ content: "y", name: "x" }], name: "A" }, [member])).toBe(false);
+    expect(isUnsaved("group", { name: "B", info: [{ name: "x", content: "y" }] }, [member])).toBe(true);
+    expect(isUnsaved("group", { name: "A", info: [{ name: "x", content: "y" }] }, [])).toBe(true);
+  });
+
+  it("checks the draft kept in the browser, and forgets the snapshot with it", () => {
+    saveDraft("wms", { name: "A" });
+    saveSnapshot("wms", { name: "A" });
+    expect(hasUnsavedChanges("wms")).toBe(false);
+    saveDraft("wms", { name: "A", opacity: 0.5 });
+    expect(hasUnsavedChanges("wms")).toBe(true);
+    saveSnapshot("wms", null);
+    saveDraft("wms", { name: "A" });
+    expect(hasUnsavedChanges("wms")).toBe(true);
+    saveSnapshot("wms", { name: "A" });
+    clearDraft("wms");
+    saveDraft("wms", { name: "A" });
+    expect(hasUnsavedChanges("wms")).toBe(true);
   });
 });

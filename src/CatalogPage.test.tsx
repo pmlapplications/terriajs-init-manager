@@ -162,6 +162,65 @@ describe("CatalogPage", () => {
     expect(await screen.findByText(/is used by the init file “Atlas”/)).toBeInTheDocument();
   });
 
+  it("selects deletable rows one by one or all at once", async () => {
+    setup(3, [memberEntry({ initFileCount: 2 }), memberEntry({ id: "m2", name: "Unused" }), memberEntry({ id: "m3", name: "Spare" })]);
+    const all = await screen.findByRole("checkbox", { name: "Select all deletable rows on this page" });
+    expect(screen.getByRole("checkbox", { name: "Select Sea surface temperature" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Unused" }));
+    expect(all).not.toBeChecked();
+    expect((all as HTMLInputElement).indeterminate).toBe(true);
+    expect(screen.getByRole("region", { name: "Selected rows" })).toHaveTextContent("1 selected");
+
+    await userEvent.click(all);
+    expect(all).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Spare" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Sea surface temperature" })).not.toBeChecked();
+    expect(screen.getByRole("region", { name: "Selected rows" })).toHaveTextContent("2 selected");
+
+    await userEvent.click(all);
+    expect(screen.queryByRole("region", { name: "Selected rows" })).not.toBeInTheDocument();
+  });
+
+  it("clears the selection when the table changes", async () => {
+    setup();
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select Ocean" }));
+    await userEvent.selectOptions(screen.getByLabelText("Kind"), "group");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Select Ocean" })).not.toBeChecked());
+  });
+
+  it("deletes the selected rows after confirming, reporting any that fail", async () => {
+    const { calls } = mockFetch({
+      "GET /api/members": {
+        items: [memberEntry(), memberEntry({ id: "m2", name: "Locked" }), memberEntry({ id: "g1", type: "group", kind: "group", name: "Ocean", memberCount: 1 })],
+        total: 3,
+        page: 1,
+        pageSize: 25,
+      },
+      "DELETE /api/items/wms/m1": () => json(null, 204),
+      "DELETE /api/items/wms/m2": () => json({ error: "used by the init file “Atlas”" }, 409),
+      "DELETE /api/groups/group/g1": () => json(null, 204),
+    });
+    render(
+      <>
+        <CatalogPage onOpen={() => {}} onDuplicate={() => {}} />
+        <DialogHost />
+      </>,
+    );
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select all deletable rows on this page" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete selected" }));
+    const dialog = await openDialog();
+    expect(screen.getByRole("dialog", { name: "Delete 2 items and 1 group?" })).toBeInTheDocument();
+    expect(dialog.getByText(/“Sea surface temperature”, “Locked”, “Ocean”/)).toBeInTheDocument();
+    await userEvent.click(dialog.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText("Deleted 1 item and 1 group")).toBeInTheDocument();
+    expect(screen.getByRole("listitem")).toHaveTextContent("“Locked”: used by the init file “Atlas”");
+    expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(3);
+    await waitFor(() => expect(calls.filter((c) => c.url.startsWith("/api/members"))).toHaveLength(2));
+    expect(screen.queryByRole("region", { name: "Selected rows" })).not.toBeInTheDocument();
+  });
+
   it("disables deleting members that init files use", async () => {
     setup(2, [memberEntry({ initFileCount: 2 }), memberEntry({ id: "m2", name: "Unused" })]);
     const used = await screen.findByRole("button", { name: "Delete Sea surface temperature" });

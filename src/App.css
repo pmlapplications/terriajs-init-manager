@@ -973,6 +973,28 @@ th[aria-sort] .sort-indicator {
   white-space: nowrap;
 }
 
+.catalog-table .select-cell {
+  width: 1%;
+  padding-right: 0;
+}
+
+.catalog-table tr.selected td {
+  background: var(--surface-2);
+}
+
+.selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
 .catalog-table td.row-actions .icon-btn + .icon-btn {
   margin-left: 4px;
 }

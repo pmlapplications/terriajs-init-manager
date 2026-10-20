@@ -13,7 +13,7 @@ import { CatalogPage } from "./CatalogPage";
 import { DialogHost } from "./DialogHost";
 import { alertDialog, confirmDialog } from "./dialogs";
 import { DocsPage } from "./DocsPage";
-import { clearDraft, hasDraft, loadLastType, loadRecord, saveDraft, saveDraftMembers, saveLastType, saveRecord } from "./drafts";
+import { clearDraft, hasDraft, hasUnsavedChanges, loadLastType, saveDraft, saveDraftMembers, saveLastType, saveRecord, saveSnapshot } from "./drafts";
 import { InitFileEditor } from "./InitFileEditor";
 import { InitFilesPage } from "./InitFilesPage";
 import { LoginPage } from "./LoginPage";
@@ -94,10 +94,10 @@ export default function Root() {
 
   const createNew = async (type: string) => {
     if (
-      !hasDraft(type) ||
+      !hasUnsavedChanges(type) ||
       (await confirmDialog({
         title: "Start a new item?",
-        message: `The ${type} form has unsaved content. Clear it and start a new item, or open the form as it is?`,
+        message: `The ${type} form has unsaved changes. Clear it and start a new item, or open the form as it is?`,
         confirmLabel: "Start new",
         cancelLabel: "Keep current form",
       }))
@@ -111,9 +111,12 @@ export default function Root() {
   const openMember = async (entry: MemberListEntry) => {
     const type = entry.type;
     if (
-      hasDraft(type) &&
-      loadRecord(type)?.id !== entry.id &&
-      !(await confirmDialog({ title: "Replace the form?", message: `Replace the current ${type} form with “${entry.name}”?`, confirmLabel: "Replace" }))
+      hasUnsavedChanges(type) &&
+      !(await confirmDialog({
+        title: "Replace the form?",
+        message: `The ${type} form has unsaved changes. Replace it with “${entry.name}”? Your changes will be lost.`,
+        confirmLabel: "Replace",
+      }))
     ) {
       return;
     }
@@ -122,6 +125,7 @@ export default function Root() {
       saveDraft(type, config.item);
       saveDraftMembers(type, config.members ?? []);
       saveRecord(type, { id: config.id, version: config.version, name: config.name });
+      saveSnapshot(type, config.item, config.members);
       setGeneration((g) => g + 1);
       location.hash = editorHash(type);
     } catch (e) {
@@ -134,8 +138,12 @@ export default function Root() {
   const duplicateMember = async (entry: MemberListEntry) => {
     const type = entry.type;
     if (
-      hasDraft(type) &&
-      !(await confirmDialog({ title: "Replace the form?", message: `Replace the current ${type} form with a copy of “${entry.name}”?`, confirmLabel: "Replace" }))
+      hasUnsavedChanges(type) &&
+      !(await confirmDialog({
+        title: "Replace the form?",
+        message: `The ${type} form has unsaved changes. Replace it with a copy of “${entry.name}”? Your changes will be lost.`,
+        confirmLabel: "Replace",
+      }))
     ) {
       return;
     }
@@ -145,6 +153,7 @@ export default function Root() {
       saveDraft(type, { ...item, name: `Copy of ${config.name}` });
       saveDraftMembers(type, config.members ?? []);
       saveRecord(type, null);
+      saveSnapshot(type, null);
       setGeneration((g) => g + 1);
       location.hash = editorHash(type);
     } catch (e) {

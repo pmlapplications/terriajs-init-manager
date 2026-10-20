@@ -28,7 +28,13 @@ currently no control for this in the app.
 The **delete** button at the end of a row deletes the item or group, after asking you to confirm.
 It is removed from any groups it is in. Deleting a group does not delete its members.
 
-An item or group that an init file uses can't be deleted, and its delete button is greyed out.
+To delete several at once, tick the boxes in the first column, or the box in the header to select
+every row on the page that can be deleted, then click **Delete selected**. The selection only
+covers the current page, and is cleared when you change page, filters or sort order. Anything
+that can't be deleted is listed with the reason, and the rest are still deleted.
+
+An item or group that an init file uses can't be deleted: its delete button and checkbox are
+greyed out.
 An init file uses a member that is in its catalog or workbench, or that is inside a group in its
 catalog at any depth. To delete it, first remove it, or the group containing it, from those init
 files.
@@ -43,8 +49,10 @@ to open its editor.
 Beside it, **Continue Editing … form** takes you back to the last form you worked on, with your
 unsaved changes. It only shows while that form has something in it.
 
-If the editor already holds an unsaved draft of that type, you are asked whether to clear it.
-Choose **Cancel** to carry on with the draft.
+If that type's form has unsaved changes, you are asked whether to clear it. Choose **Keep current
+form** to carry on with it. Opening or duplicating a row from the catalog table asks the same way,
+and only when changes would be lost; a form that matches what was last opened or saved is
+replaced straight away.
 
 ## The editor
 

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { DialogHost } from "./DialogHost";
-import { loadDraft, loadRecord, saveDraft } from "./drafts";
+import { hasUnsavedChanges, loadDraft, loadRecord, saveDraft } from "./drafts";
 import { fieldId } from "./form/paths";
 import { loadModel, type CatalogModel } from "./terria/catalog-ui";
 import { json, mockFetch } from "./test/fetch";
@@ -65,6 +65,7 @@ describe("item editor", () => {
     expect(await screen.findByText("Saved version 1")).toBeInTheDocument();
     expect(calls[0].body).toEqual({ name: "SST", url: "https://example.com/wms" });
     expect(loadRecord("wms")).toEqual({ id: "c1", version: 1, name: "SST" });
+    expect(hasUnsavedChanges("wms")).toBe(false);
 
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Saved version 2")).toBeInTheDocument();

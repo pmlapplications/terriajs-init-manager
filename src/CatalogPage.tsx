@@ -1,7 +1,7 @@
 // Landing page: every stored catalog item and group, paged, sorted and filtered on the
 // server. The table state is kept for the browser tab, so going to the editor
 // and back returns to the same page. Members no init file uses can be deleted
-// from here.
+// from here, one at a time or by selecting rows on the current page.
 
 import { useEffect, useState } from "react";
 import { confirmDialog } from "./dialogs";
@@ -55,6 +55,27 @@ const DESCENDING_FIRST = new Set<MemberSortKey>(["updatedAt", "version", "isPubl
 const byLabel = (types: ItemType[]) => [...types].sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)));
 const typeOptions = { item: byLabel(itemTypes), group: byLabel(groupTypes) };
 
+/** Members an init file uses can't be deleted. */
+const canDelete = (m: MemberListEntry) => m.initFileCount === 0;
+
+const usedByMessage = (m: MemberListEntry) =>
+  `Used by ${m.initFileCount} init file${m.initFileCount === 1 ? "" : "s"}; remove it from ${m.initFileCount === 1 ? "that file" : "them"} to delete it`;
+
+/** "2 items and 1 group". */
+function countOf(members: MemberListEntry[]) {
+  const groups = members.filter((m) => m.kind === "group").length;
+  const items = members.length - groups;
+  const parts = [];
+  if (items) parts.push(`${items} item${items === 1 ? "" : "s"}`);
+  if (groups) parts.push(`${groups} group${groups === 1 ? "" : "s"}`);
+  return parts.join(" and ");
+}
+
+const NO_ROWS: ReadonlySet<string> = new Set();
+
+// The bulk delete confirmation names this many rows, then counts the rest.
+const MAX_NAMES_LISTED = 10;
+
 function loadState(): TableState {
   try {
     return { ...DEFAULT_STATE, ...JSON.parse(sessionStorage.getItem(STATE_KEY) ?? "{}") };
@@ -91,6 +112,14 @@ export function CatalogPage({
   const [message, setMessage] = useState<string | null>(null);
   // Bumped to reload the current page, e.g. after a delete.
   const [reload, setReload] = useState(0);
+  // Ids of the rows ticked, kept with the table state they were ticked in: a
+  // selection only applies to the rows it was made on. Only deletable rows can be ticked.
+  const [selection, setSelection] = useState<{ state: TableState; ids: ReadonlySet<string> }>({ state, ids: NO_ROWS });
+  const selected = selection.state === state ? selection.ids : NO_ROWS;
+  const setSelected = (ids: ReadonlySet<string>) => setSelection({ state, ids });
+  const [deleting, setDeleting] = useState(false);
+  // Rows a bulk delete couldn't delete, with the reason; kept when the page reloads.
+  const [failures, setFailures] = useState<string[]>([]);
 
   /** Changes filters or sorting and goes back to the first page. */
   const refine = (changes: Partial<TableState>) => setState((s) => ({ ...s, ...changes, page: 1 }));
@@ -162,6 +191,7 @@ export function CatalogPage({
     if (!ok) return;
     setError(null);
     setMessage(null);
+    setFailures([]);
     try {
       await deleteConfig(member.kind, member.type, member.id);
       // An editor draft loaded from it can only be saved as a new config now.
@@ -171,6 +201,51 @@ export function CatalogPage({
     } catch (e) {
       setError((e as Error).message);
     }
+  };
+
+  const deletable = (result?.items ?? []).filter(canDelete);
+  const selectedRows = deletable.filter((m) => selected.has(m.id));
+  const allSelected = deletable.length > 0 && selectedRows.length === deletable.length;
+
+  const toggle = (id: string, on: boolean) => {
+    const next = new Set(selected);
+    if (on) next.add(id);
+    else next.delete(id);
+    setSelected(next);
+  };
+
+  const removeSelected = async () => {
+    const rows = selectedRows;
+    if (!rows.length) return;
+    const names = rows.slice(0, MAX_NAMES_LISTED).map((m) => `“${m.name}”`);
+    if (rows.length > MAX_NAMES_LISTED) names.push(`and ${rows.length - MAX_NAMES_LISTED} more`);
+    const ok = await confirmDialog({
+      title: `Delete ${countOf(rows)}?`,
+      message: `Delete ${names.join(", ")}? They are also removed from any groups they are in. Members of deleted groups are kept.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    setError(null);
+    setMessage(null);
+    setFailures([]);
+    setDeleting(true);
+    const failed: string[] = [];
+    const deleted: MemberListEntry[] = [];
+    for (const member of rows) {
+      try {
+        await deleteConfig(member.kind, member.type, member.id);
+        if (loadRecord(member.type)?.id === member.id) saveRecord(member.type, null);
+        deleted.push(member);
+      } catch (e) {
+        failed.push(`“${member.name}”: ${(e as Error).message}`);
+      }
+    }
+    setDeleting(false);
+    setSelected(NO_ROWS);
+    if (deleted.length) setMessage(`Deleted ${countOf(deleted)}`);
+    setFailures(failed);
+    setReload((r) => r + 1);
   };
 
   const total = result?.total ?? 0;
@@ -254,8 +329,30 @@ export function CatalogPage({
           )}
         </div>
 
+        {selectedRows.length > 0 && (
+          <div className="selection-bar" role="region" aria-label="Selected rows">
+            <span>{selectedRows.length} selected</span>
+            <button type="button" className="btn small danger" disabled={deleting} onClick={removeSelected}>
+              {deleting ? "Deleting…" : "Delete selected"}
+            </button>
+            <button type="button" className="btn small" disabled={deleting} onClick={() => setSelected(NO_ROWS)}>
+              Clear selection
+            </button>
+          </div>
+        )}
+
         {message && <p className="save-message ok">{message}</p>}
         {error && <p className="issues-inline error">{error}</p>}
+        {failures.length > 0 && (
+          <div className="issues-inline error">
+            Could not delete:
+            <ul>
+              {failures.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {!result && !error && <p className="hint">Loading…</p>}
 
         {result && (
@@ -264,6 +361,19 @@ export function CatalogPage({
               <table className="table catalog-table">
                 <thead>
                   <tr>
+                    <th className="select-cell">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all deletable rows on this page"
+                        title={deletable.length ? "Select or deselect every row on this page that can be deleted" : "No rows on this page can be deleted"}
+                        disabled={!deletable.length || deleting}
+                        checked={allSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = selectedRows.length > 0 && !allSelected;
+                        }}
+                        onChange={() => setSelected(allSelected ? NO_ROWS : new Set(deletable.map((m) => m.id)))}
+                      />
+                    </th>
                     {COLUMNS.map((c) => {
                       const active = state.sort === c.key;
                       return (
@@ -284,7 +394,17 @@ export function CatalogPage({
                 </thead>
                 <tbody>
                   {result.items.map((item) => (
-                    <tr key={item.id}>
+                    <tr key={item.id} className={selected.has(item.id) ? "selected" : undefined}>
+                      <td className="select-cell">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${item.name}`}
+                          title={canDelete(item) ? undefined : usedByMessage(item)}
+                          disabled={!canDelete(item) || deleting}
+                          checked={selected.has(item.id)}
+                          onChange={(e) => toggle(item.id, e.target.checked)}
+                        />
+                      </td>
                       <td>
                         <button type="button" className="link" title="Open in the editor" onClick={() => onOpen(item)}>
                           {item.name}
@@ -318,12 +438,8 @@ export function CatalogPage({
                         <button
                           type="button"
                           className="icon-btn"
-                          disabled={item.initFileCount > 0}
-                          title={
-                            item.initFileCount > 0
-                              ? `Used by ${item.initFileCount} init file${item.initFileCount === 1 ? "" : "s"}; remove it from ${item.initFileCount === 1 ? "that file" : "them"} to delete it`
-                              : `Delete this ${item.kind}`
-                          }
+                          disabled={!canDelete(item)}
+                          title={canDelete(item) ? `Delete this ${item.kind}` : usedByMessage(item)}
                           aria-label={`Delete ${item.name}`}
                           onClick={() => remove(item)}
                         >
@@ -334,7 +450,7 @@ export function CatalogPage({
                   ))}
                   {result.items.length === 0 && (
                     <tr>
-                      <td colSpan={COLUMNS.length + 1} className="hint empty-row">
+                      <td colSpan={COLUMNS.length + 2} className="hint empty-row">
                         {filtered ? "Nothing matches these filters." : "No catalog items or groups saved yet. Use Create New to add one."}
                       </td>
                     </tr>
