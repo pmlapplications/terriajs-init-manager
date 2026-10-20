@@ -164,9 +164,9 @@ export default function App({ model }: { model: CatalogModel }) {
       <div className="app">
         <header className="topbar">
           <div className="brand">
-            <h1>TerriaJS Init Manager</h1>
+            <h1>{model.model} Editor</h1>
             <span>
-              {model.model} · <code>"type": "{model.type}"</code> ·{" "}
+              <code>"type": "{model.type}"</code> ·{" "}
               <a href={model.source} target="_blank" rel="noreferrer">
                 docs
               </a>

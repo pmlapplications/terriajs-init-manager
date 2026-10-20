@@ -707,13 +707,33 @@ fieldset.field > legend + * {
 
 /* --- Pages, login and users --------------------------------------------- */
 
+.site-header {
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 4px solid #1ea971;
+}
+
+.site-logo {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.site-logo img {
+  border-radius: 6px;
+}
+
 .page-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 16px;
   align-items: center;
   padding: 6px 16px;
-  background: var(--surface-2);
+  background: #1ea97119;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
@@ -1296,7 +1316,8 @@ a.link {
 }
 
 .camera-map-canvas {
-  height: 420px;
+  aspect-ratio: 2 / 1;
+  max-height: 560px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }

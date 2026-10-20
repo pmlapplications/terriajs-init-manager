@@ -16,7 +16,7 @@ import { InitFileEditor } from "./InitFileEditor";
 import { InitFilesPage } from "./InitFilesPage";
 import { LoginPage } from "./LoginPage";
 import { NewPage } from "./NewPage";
-import { kindOf, loadModel, typeLabel, type CatalogModel } from "./terria/catalog-ui";
+import { kindOf, loadModel, type CatalogModel } from "./terria/catalog-ui";
 import { UsersPage } from "./UsersPage";
 import "./App.css";
 
@@ -132,18 +132,18 @@ export default function Root() {
 
   return (
     <>
+      <header className="site-header">
+        <a href="#/" className="site-logo">
+          <img src="/tim-icon-1024.png" alt="" width={28} height={28} />
+          TerriaJS Init Manager
+        </a>
+      </header>
       <nav className="page-nav" aria-label="Pages">
-        <a href="#/" aria-current={route.page === "catalog" ? "page" : undefined}>
-          Catalog items
-        </a>
-        <a href="#/new" aria-current={route.page === "new" ? "page" : undefined}>
-          Create New
-        </a>
-        <a href={editorHash(editingType)} aria-current={route.page === "item" ? "page" : undefined}>
-          {typeLabel(editingType)} editor
-        </a>
         <a href="#/init-files" aria-current={route.page === "initFiles" || route.page === "initFile" ? "page" : undefined}>
           Init files
+        </a>
+        <a href="#/" aria-current={route.page === "catalog" || route.page === "new" ? "page" : undefined}>
+          Catalogue Groups/Items
         </a>
         <a href="#/users" aria-current={route.page === "users" ? "page" : undefined}>
           Users

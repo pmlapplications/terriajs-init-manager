@@ -34,10 +34,10 @@ describe("Root", () => {
     loggedIn();
     render(<Root />);
     const nav = await screen.findByRole("navigation", { name: "Pages" });
-    expect(nav).toHaveTextContent("Catalog items");
+    expect(nav).toHaveTextContent("Catalogue Groups/Items");
     expect(nav).toHaveTextContent("Init files");
     expect(screen.getByText(`v${__APP_VERSION__}`)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Catalog items" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Catalogue Groups/Items" })).toHaveAttribute("aria-current", "page");
   });
 
   it("reports an unreachable server", async () => {
@@ -108,7 +108,6 @@ describe("Root", () => {
     go("#/item/wms");
     expect(await screen.findByText(/"type": "wms"/, { selector: "code" })).toBeInTheDocument();
     expect(loadDraft("wms")).toEqual({});
-    expect(screen.getByRole("link", { name: "WebMapService editor" })).toHaveAttribute("aria-current", "page");
   });
 
   it("opens a catalog row in its editor", async () => {
