@@ -1,13 +1,15 @@
 // Landing page: every stored catalog item and group, paged, sorted and filtered on the
 // server. The table state is kept for the browser tab, so going to the editor
 // and back returns to the same page. Members no init file uses can be deleted
-// from here, one at a time or by selecting rows on the current page.
+// from here, one at a time or by selecting rows on the current page; selected
+// rows of one type can be edited together in the bulk editor.
 
 import { useEffect, useState } from "react";
 import { confirmDialog } from "./dialogs";
 import { loadRecord, saveRecord } from "./drafts";
 import { deleteConfig, listMembers, type MemberListEntry, type MemberListPage, type MemberListQuery, type MemberSortKey } from "./api";
 import { Icon } from "./Icon";
+import { bulkEditHash } from "./routes";
 import { groupTypes, itemTypes, typeLabel, type ItemType, type MemberKind } from "./terria/catalog-ui";
 
 interface TableState {
@@ -113,7 +115,7 @@ export function CatalogPage({
   // Bumped to reload the current page, e.g. after a delete.
   const [reload, setReload] = useState(0);
   // Ids of the rows ticked, kept with the table state they were ticked in: a
-  // selection only applies to the rows it was made on. Only deletable rows can be ticked.
+  // selection only applies to the rows it was made on.
   const [selection, setSelection] = useState<{ state: TableState; ids: ReadonlySet<string> }>({ state, ids: NO_ROWS });
   const selected = selection.state === state ? selection.ids : NO_ROWS;
   const setSelected = (ids: ReadonlySet<string>) => setSelection({ state, ids });
@@ -203,9 +205,12 @@ export function CatalogPage({
     }
   };
 
-  const deletable = (result?.items ?? []).filter(canDelete);
-  const selectedRows = deletable.filter((m) => selected.has(m.id));
-  const allSelected = deletable.length > 0 && selectedRows.length === deletable.length;
+  const rows = result?.items ?? [];
+  const selectedRows = rows.filter((m) => selected.has(m.id));
+  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+  const selectedDeletable = selectedRows.filter(canDelete);
+  const selectedTypes = new Set(selectedRows.map((m) => m.type));
+  const [editType] = selectedTypes.size === 1 ? selectedTypes : [];
 
   const toggle = (id: string, on: boolean) => {
     const next = new Set(selected);
@@ -215,13 +220,15 @@ export function CatalogPage({
   };
 
   const removeSelected = async () => {
-    const rows = selectedRows;
-    if (!rows.length) return;
-    const names = rows.slice(0, MAX_NAMES_LISTED).map((m) => `“${m.name}”`);
-    if (rows.length > MAX_NAMES_LISTED) names.push(`and ${rows.length - MAX_NAMES_LISTED} more`);
+    const targets = selectedDeletable;
+    if (!targets.length) return;
+    const names = targets.slice(0, MAX_NAMES_LISTED).map((m) => `“${m.name}”`);
+    if (targets.length > MAX_NAMES_LISTED) names.push(`and ${targets.length - MAX_NAMES_LISTED} more`);
+    const skipped = selectedRows.length - targets.length;
+    const skipNote = skipped ? ` ${skipped} selected ${skipped === 1 ? "row is" : "rows are"} used by init files, so ${skipped === 1 ? "is" : "are"} kept.` : "";
     const ok = await confirmDialog({
-      title: `Delete ${countOf(rows)}?`,
-      message: `Delete ${names.join(", ")}? They are also removed from any groups they are in. Members of deleted groups are kept.`,
+      title: `Delete ${countOf(targets)}?`,
+      message: `Delete ${names.join(", ")}? They are also removed from any groups they are in. Members of deleted groups are kept.${skipNote}`,
       confirmLabel: "Delete",
       danger: true,
     });
@@ -232,7 +239,7 @@ export function CatalogPage({
     setDeleting(true);
     const failed: string[] = [];
     const deleted: MemberListEntry[] = [];
-    for (const member of rows) {
+    for (const member of targets) {
       try {
         await deleteConfig(member.kind, member.type, member.id);
         if (loadRecord(member.type)?.id === member.id) saveRecord(member.type, null);
@@ -332,8 +339,23 @@ export function CatalogPage({
         {selectedRows.length > 0 && (
           <div className="selection-bar" role="region" aria-label="Selected rows">
             <span>{selectedRows.length} selected</span>
-            <button type="button" className="btn small danger" disabled={deleting} onClick={removeSelected}>
-              {deleting ? "Deleting…" : "Delete selected"}
+            <button
+              type="button"
+              className="btn small"
+              disabled={!editType || deleting}
+              title={editType ? `Set traits on the selected ${typeLabel(editType)} ${selectedRows[0].kind}s together` : "Select rows of one type to edit them together"}
+              onClick={() => (location.hash = bulkEditHash(editType!, selectedRows.map((m) => m.id)))}
+            >
+              Edit selected
+            </button>
+            <button
+              type="button"
+              className="btn small danger"
+              disabled={!selectedDeletable.length || deleting}
+              title={selectedDeletable.length ? undefined : "The selected rows are used by init files, so can't be deleted"}
+              onClick={removeSelected}
+            >
+              {deleting ? "Deleting…" : selectedDeletable.length < selectedRows.length && selectedDeletable.length ? `Delete ${selectedDeletable.length} deletable` : "Delete selected"}
             </button>
             <button type="button" className="btn small" disabled={deleting} onClick={() => setSelected(NO_ROWS)}>
               Clear selection
@@ -364,14 +386,14 @@ export function CatalogPage({
                     <th className="select-cell">
                       <input
                         type="checkbox"
-                        aria-label="Select all deletable rows on this page"
-                        title={deletable.length ? "Select or deselect every row on this page that can be deleted" : "No rows on this page can be deleted"}
-                        disabled={!deletable.length || deleting}
+                        aria-label="Select all rows on this page"
+                        title="Select or deselect every row on this page"
+                        disabled={!rows.length || deleting}
                         checked={allSelected}
                         ref={(el) => {
                           if (el) el.indeterminate = selectedRows.length > 0 && !allSelected;
                         }}
-                        onChange={() => setSelected(allSelected ? NO_ROWS : new Set(deletable.map((m) => m.id)))}
+                        onChange={() => setSelected(allSelected ? NO_ROWS : new Set(rows.map((m) => m.id)))}
                       />
                     </th>
                     {COLUMNS.map((c) => {
@@ -399,8 +421,7 @@ export function CatalogPage({
                         <input
                           type="checkbox"
                           aria-label={`Select ${item.name}`}
-                          title={canDelete(item) ? undefined : usedByMessage(item)}
-                          disabled={!canDelete(item) || deleting}
+                          disabled={deleting}
                           checked={selected.has(item.id)}
                           onChange={(e) => toggle(item.id, e.target.checked)}
                         />

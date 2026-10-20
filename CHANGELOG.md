@@ -11,6 +11,10 @@ All notable changes to TerriaJS Init Manager. The format follows
 
 - Delete items and groups from the catalog table, unless an init file uses them. Deleting a
   group keeps its members.
+- Select rows in the catalog table, or every row on the page, and delete them together.
+- Edit several items or groups of one type at once: **Edit selected** sets the traits you fill in
+  on all of them, showing each one's current values on request. Traits that must be unique are
+  left out.
 - An **Orphaned only** filter in the catalog table, for items and groups in no group and no init
   file.
 - A **Docs** menu item that shows this documentation inside the app, served by the server at

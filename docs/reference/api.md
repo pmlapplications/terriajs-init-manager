@@ -49,18 +49,32 @@ the path) and, for groups, without `members` (sent separately as database ids).
 | `POST` | `/api/items/:type` | Create an item. The body is the item. |
 | `PUT` | `/api/items/:type/:id` | Update an item: `{ "version", "item" }`. |
 | `DELETE` | `/api/items/:type/:id` | Delete an item, and remove it from its groups. `409` if an init file uses it. |
+| `POST` | `/api/items/:type/bulk-update` | Set the same traits on several items: `{ "ids", "set" }`. See [below](#bulk-updates). |
 | `GET` | `/api/groups/:type` | Saved groups of a type, e.g. `/api/groups/group`. |
 | `GET` | `/api/groups/:type/:id` | One group, as for items plus `members`: its members in order, each `{ id, type, kind, terriaId, name }`. |
 | `GET` | `/api/groups/:type/member-types` | The types a group of this type may contain. |
 | `POST` | `/api/groups/:type` | Create a group: `{ "item", "members" }`, with `members` an ordered array of database ids. |
 | `PUT` | `/api/groups/:type/:id` | Update a group: `{ "version", "item", "members" }`. Leave out `members` to keep the current ones. |
 | `DELETE` | `/api/groups/:type/:id` | Delete a group. Its members are kept; it is removed from its parent groups. `409` if an init file uses it. |
+| `POST` | `/api/groups/:type/bulk-update` | The same for groups. Their members are not changed. |
 
 A request for a type of the wrong kind (for example `/api/items/group`) returns `404`.
 
 An init file **uses** a member if the member, or a group containing it at any depth, is in the
 init file's catalog, or the member is on its workbench. Such a member can't be deleted; the `409`
 error names the init files.
+
+### Bulk updates
+
+`POST /api/items/:type/bulk-update` (or `/api/groups/:type/bulk-update`) takes
+`{ "ids": [...], "set": { ... } }`: database ids of configs of that type, and the traits to set.
+Each key of `set` replaces that trait's whole value on every config; their other traits are kept
+as currently stored, so no `version` is needed. It returns the updated configs' summaries.
+
+All the configs are updated in one transaction, so if any fails nothing changes. `400` if `set`
+is empty, has a `null` value, or includes `id` or `shareKeys` (which must be unique), `type` or
+`members`, or if a config would be invalid (the error names it). `404` if an id isn't a config
+of that type.
 
 ### Searching members
 

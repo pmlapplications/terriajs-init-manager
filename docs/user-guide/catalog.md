@@ -23,21 +23,46 @@ The **Published** column shows whether an item or group is included when init fi
 exported. Unpublished members are left out of exported and published init files. There is
 currently no control for this in the app.
 
+## Selecting rows
+
+Tick the boxes in the first column to select rows, or the box in the header to select every row
+on the page. The selection only covers the current page, and is cleared when you change page,
+filters or sort order. While rows are selected, a bar above the table offers:
+
+- **Edit selected**, when every selected row is the same type: see
+  [Editing several at once](#editing-several-at-once).
+- **Delete selected**: see below.
+
 ## Deleting an item or group
 
 The **delete** button at the end of a row deletes the item or group, after asking you to confirm.
 It is removed from any groups it is in. Deleting a group does not delete its members.
 
-To delete several at once, tick the boxes in the first column, or the box in the header to select
-every row on the page that can be deleted, then click **Delete selected**. The selection only
-covers the current page, and is cleared when you change page, filters or sort order. Anything
-that can't be deleted is listed with the reason, and the rest are still deleted.
+To delete several at once, select them and click **Delete selected**. Selected rows that an init
+file uses are skipped. Anything that can't be deleted is listed with the reason, and the rest are
+still deleted.
 
-An item or group that an init file uses can't be deleted: its delete button and checkbox are
-greyed out.
+An item or group that an init file uses can't be deleted: its delete button is greyed out.
 An init file uses a member that is in its catalog or workbench, or that is inside a group in its
 catalog at any depth. To delete it, first remove it, or the group containing it, from those init
 files.
+
+## Editing several at once
+
+Select rows of one type and click **Edit selected** to set the same traits on all of them. The
+form has the type's usual sections, but:
+
+- Every field starts empty. Fill in only the traits you want to change; the rest are left as they
+  are on each item.
+- `id` and `shareKeys` aren't shown, since each item needs its own.
+- A trait you fill in replaces that trait's whole value on every selected item. For example,
+  filling in part of `rectangle` replaces each item's whole `rectangle`.
+- Next to each field, **set on 2 of 5** opens a list of each selected item's current value for
+  that trait. **not set on any** means none of them has it.
+
+The **Changes** panel shows exactly what will be applied. **Apply** asks you to confirm, then
+updates every selected item together: if any of them can't be saved, none are changed. A group's
+members are not changed.
 
 ## Creating an item or group
 

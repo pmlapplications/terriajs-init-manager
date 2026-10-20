@@ -668,6 +668,50 @@ fieldset.field > legend + * {
   margin-top: 12px;
 }
 
+/* --- Bulk editor (BulkEditPage.tsx) ------------------------------------- */
+
+.bulk-editor .brand span {
+  display: block;
+  max-width: 60ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-intro {
+  margin: 0 0 12px;
+}
+
+.bulk-note {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.values-table {
+  margin-top: 12px;
+}
+
+.values-table th {
+  width: 35%;
+  text-align: left;
+  vertical-align: top;
+}
+
+.values-table td {
+  overflow-wrap: anywhere;
+}
+
+.values-table .code-block {
+  max-height: 200px;
+  overflow: auto;
+}
+
+.modal:has(.values-table) {
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
 /* Confirmations and messages (DialogHost.tsx), above any other modal. */
 .dialog-backdrop {
   z-index: 30;

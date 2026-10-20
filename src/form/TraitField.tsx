@@ -40,7 +40,7 @@ const isSet = (v: unknown) => v !== undefined;
 
 /** One trait: label, input for its type, description and any issues. */
 export function TraitField({ className, trait, path }: { className: string; trait: TraitDef; path: Path }) {
-  const { model, item, update, issuesAt, setDraftError, filter, onlySet } = useEditor();
+  const { model, item, update, issuesAt, setDraftError, filter, onlySet, fieldNote } = useEditor();
   const key = pathKey(path);
   const value = getIn(item, path);
   const spec = model.specFor(className, trait);
@@ -112,7 +112,14 @@ export function TraitField({ className, trait, path }: { className: string; trai
 
   return (
     <div className={`field${isSet(value) ? " is-set" : ""}`}>
-      <FieldLabel htmlFor={id} trait={trait} typeLabel={typeLabel} required={spec.required} onClear={isSet(value) ? () => set(undefined) : undefined} />
+      <FieldLabel
+        htmlFor={id}
+        trait={trait}
+        typeLabel={typeLabel}
+        required={spec.required}
+        onClear={isSet(value) ? () => set(undefined) : undefined}
+        note={fieldNote?.(path)}
+      />
       {input}
       <IssueList issues={issues} />
       <Description text={trait.description} />
@@ -135,12 +142,14 @@ function FieldLabel({
   typeLabel,
   required,
   onClear,
+  note,
 }: {
   htmlFor?: string;
   trait: TraitDef;
   typeLabel: string;
   required?: boolean;
   onClear?: () => void;
+  note?: ReactNode;
 }) {
   return (
     <div className="label-row">
@@ -158,6 +167,7 @@ function FieldLabel({
           clear
         </button>
       )}
+      {note}
     </div>
   );
 }
@@ -276,7 +286,7 @@ function ObjectField({
   issues: Issue[];
   typeLabel: string;
 }) {
-  const { update, filter, issuesUnder } = useEditor();
+  const { update, filter, issuesUnder, fieldNote } = useEditor();
   const [open, setOpen] = useState(false);
   const n = countSet(value);
   const nestedErrors = issuesUnder(pathKey(path)).filter((i) => i.level === "error" && i.path !== pathKey(path)).length;
@@ -296,6 +306,7 @@ function ObjectField({
             clear
           </button>
         )}
+        {fieldNote?.(path)}
       </legend>
       <IssueList issues={issues} />
       <Description text={trait.description} />
@@ -322,7 +333,7 @@ function ObjectArrayField({
   value: unknown;
   issues: Issue[];
 }) {
-  const { update, issuesUnder, filter } = useEditor();
+  const { update, issuesUnder, filter, fieldNote } = useEditor();
   const list = Array.isArray(value) ? value : [];
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const setList = (next: unknown[]) => update(path, next.length ? next : undefined);
@@ -340,6 +351,7 @@ function ObjectArrayField({
         <code className="trait-name">{trait.name}</code>
         <span className="type">{trait.type}</span>
         {list.length > 0 && <span className="count">{list.length}</span>}
+        {fieldNote?.(path)}
       </legend>
       <IssueList issues={issues} />
       <Description text={trait.description} />

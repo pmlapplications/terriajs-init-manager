@@ -134,6 +134,16 @@ export function saveConfig(
 export const deleteConfig = (kind: MemberKind, type: string, id: string) =>
   request<null>(configPath(kind, type, id), { method: "DELETE" });
 
+/** Traits that must differ between configs, so the bulk editor can't set them. */
+export const UNIQUE_TRAITS = ["id", "shareKeys"];
+
+/**
+ * Sets the same traits on several configs of one type, all or none: each key
+ * of `set` replaces that trait's value, and other traits are kept.
+ */
+export const bulkUpdateConfigs = (kind: MemberKind, type: string, ids: string[], set: JsonObject) =>
+  request<ItemConfigSummary[]>(`${configPath(kind, type)}/bulk-update`, { method: "POST", body: JSON.stringify({ ids, set }) });
+
 /** Types a group of `groupType` may contain. */
 export const listMemberTypes = (groupType: string) =>
   request<string[]>(`/groups/${encodeURIComponent(groupType)}/member-types`);

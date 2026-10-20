@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { Capabilities } from "../terria/capabilities";
 import type { CatalogModel } from "../terria/catalog-ui";
 import type { JsonObject, Path } from "../terria/traits";
@@ -16,6 +16,8 @@ export interface EditorContextValue {
   capabilities: Capabilities | null;
   filter: string;
   onlySet: boolean;
+  /** Extra content for a field's label row, e.g. the bulk editor's link to current values. */
+  fieldNote?: (path: Path) => ReactNode;
 }
 
 export const EditorContext = createContext<EditorContextValue | null>(null);

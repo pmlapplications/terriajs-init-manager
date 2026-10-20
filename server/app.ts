@@ -21,12 +21,14 @@
 //   POST   /api/items/:type       create a config from an item
 //   PUT    /api/items/:type/:id   update a config; body { version, item }
 //   DELETE /api/items/:type/:id   delete a config, unless an init file uses it
+//   POST   /api/items/:type/bulk-update  set the same traits on several configs; body { ids, set }
 //
 //   GET    /api/groups/:type      the same for catalog group types (group, wms-group, ...);
 //   GET    /api/groups/:type/:id  a group config also has `members`, and POST/PUT bodies
 //   POST   /api/groups/:type      are { item, members } / { version, item, members } with
 //   PUT    /api/groups/:type/:id  members as an ordered array of catalog member ids
 //   DELETE /api/groups/:type/:id  delete a group, unless an init file uses it; its members are kept
+//   POST   /api/groups/:type/bulk-update  the same for groups; members are left as they are
 //   GET    /api/groups/:type/member-types  types a group of this type may contain
 //
 //   GET    /api/init-files             list init files
@@ -54,7 +56,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { PG_CHECK_VIOLATION, PG_RAISE_EXCEPTION, PG_UNIQUE_VIOLATION, pgErrorCode, pool } from "./db.ts";
 import { ApiError } from "./errors.ts";
 import { SESSION_HOURS, createUser, deleteUser, listUsers, login, logout, parseNewUser, sessionUser, type User } from "./users.ts";
-import { createConfig, deleteConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
+import { bulkUpdateConfigs, createConfig, deleteConfig, getConfig, listConfigs, listMembers, listMemberTypes, updateConfig, type MemberKind } from "./members.ts";
 import {
   CONFIG_DIR,
   createInitFile,
@@ -169,6 +171,10 @@ for (const [kind, base] of [["item", "/api/items"], ["group", "/api/groups"]] as
     const { item, members } = kind === "group" ? ((body ?? {}) as { item?: unknown; members?: unknown }) : { item: body, members: undefined };
     return c.json(await createConfig(kind, c.req.param("type"), item, members, c.var.user.email), 201);
   });
+
+  app.post(`${base}/:type/bulk-update`, async (c) =>
+    c.json(await bulkUpdateConfigs(kind, c.req.param("type"), await jsonBody(c), c.var.user.email)),
+  );
 
   app.put(`${base}/:type/:id`, async (c) => {
     const body = await jsonBody(c);

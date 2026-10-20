@@ -162,10 +162,9 @@ describe("CatalogPage", () => {
     expect(await screen.findByText(/is used by the init file “Atlas”/)).toBeInTheDocument();
   });
 
-  it("selects deletable rows one by one or all at once", async () => {
+  it("selects rows one by one or all at once", async () => {
     setup(3, [memberEntry({ initFileCount: 2 }), memberEntry({ id: "m2", name: "Unused" }), memberEntry({ id: "m3", name: "Spare" })]);
-    const all = await screen.findByRole("checkbox", { name: "Select all deletable rows on this page" });
-    expect(screen.getByRole("checkbox", { name: "Select Sea surface temperature" })).toBeDisabled();
+    const all = await screen.findByRole("checkbox", { name: "Select all rows on this page" });
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Unused" }));
     expect(all).not.toBeChecked();
@@ -174,12 +173,33 @@ describe("CatalogPage", () => {
 
     await userEvent.click(all);
     expect(all).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Select Spare" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Select Sea surface temperature" })).not.toBeChecked();
-    expect(screen.getByRole("region", { name: "Selected rows" })).toHaveTextContent("2 selected");
+    expect(screen.getByRole("checkbox", { name: "Select Sea surface temperature" })).toBeChecked();
+    expect(screen.getByRole("region", { name: "Selected rows" })).toHaveTextContent("3 selected");
+    // One of them is used by init files, so only the other two can be deleted.
+    expect(screen.getByRole("button", { name: "Delete 2 deletable" })).toBeEnabled();
 
     await userEvent.click(all);
     expect(screen.queryByRole("region", { name: "Selected rows" })).not.toBeInTheDocument();
+  });
+
+  it("can't delete a selection that init files all use", async () => {
+    setup(1, [memberEntry({ initFileCount: 1 })]);
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select Sea surface temperature" }));
+    expect(screen.getByRole("button", { name: "Delete selected" })).toBeDisabled();
+  });
+
+  it("opens the bulk editor for selected rows of one type", async () => {
+    setup(3, [memberEntry(), memberEntry({ id: "m2", name: "Second" }), memberEntry({ id: "g1", type: "group", kind: "group", name: "Ocean", memberCount: 0 })]);
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select Sea surface temperature" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Ocean" }));
+    const edit = screen.getByRole("button", { name: "Edit selected" });
+    expect(edit).toBeDisabled();
+    expect(edit).toHaveAttribute("title", "Select rows of one type to edit them together");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Ocean" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Second" }));
+    await userEvent.click(edit);
+    expect(location.hash).toBe("#/bulk/wms/m1,m2");
   });
 
   it("clears the selection when the table changes", async () => {
@@ -207,7 +227,7 @@ describe("CatalogPage", () => {
         <DialogHost />
       </>,
     );
-    await userEvent.click(await screen.findByRole("checkbox", { name: "Select all deletable rows on this page" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select all rows on this page" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete selected" }));
     const dialog = await openDialog();
     expect(screen.getByRole("dialog", { name: "Delete 2 items and 1 group?" })).toBeInTheDocument();

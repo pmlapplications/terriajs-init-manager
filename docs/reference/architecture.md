@@ -24,8 +24,10 @@ documents can be edited without code specific to it.
 | `src/CameraMap.tsx`, `src/camera.ts` | The Leaflet map for camera views, and bounding box helpers. |
 | `src/DocsPage.tsx` | Shows the documentation from `/docs/` in a frame, keeping the page being read in the address bar. |
 | `src/CatalogPage.tsx`, `src/InitFilesPage.tsx`, `src/UsersPage.tsx`, `src/NewPage.tsx` | The other pages. |
+| `src/BulkEditPage.tsx` | Sets the same traits on several configs of one type, reusing the editor's fields. |
+| `src/routes.ts` | Hash routes shared between pages (the bulk editor's). |
 | `src/dialogs.ts`, `src/DialogHost.tsx` | `confirmDialog()` and `alertDialog()`, used instead of the browser's `confirm()` and `alert()`, and the modal that shows them. |
-| `src/Root.tsx` | Login gate and page routing (`#/`, `#/new`, `#/item/<type>`, `#/group/<type>`, `#/init-files`, `#/init-files/<id>`, `#/users`, `#/docs/<page>`). |
+| `src/Root.tsx` | Login gate and page routing (`#/`, `#/new`, `#/item/<type>`, `#/group/<type>`, `#/bulk/<type>/<ids>`, `#/init-files`, `#/init-files/<id>`, `#/users`, `#/docs/<page>`). |
 | `src/api.ts` | Client for the HTTP API. |
 
 ## Server

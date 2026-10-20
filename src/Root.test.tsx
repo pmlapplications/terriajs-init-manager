@@ -67,6 +67,11 @@ describe("Root", () => {
     ["#/users", { "GET /api/users": [user()] }, () => screen.getByRole("heading", { name: "Add a user" })],
     ["#/init-files", { "GET /api/init-files": [] }, () => screen.getByRole("heading", { name: "Init files" })],
     ["#/new", {}, () => screen.getByLabelText("Filter types")],
+    [
+      "#/bulk/wms/m1",
+      { "GET /api/items/wms/m1": { id: "m1", type: "wms", name: "Alpha", version: 1, item: { name: "Alpha" } } },
+      () => screen.getByRole("heading", { name: "Edit 1 WebMapService item" }),
+    ],
   ])("routes %s", async (hash, routes, find) => {
     loggedIn(routes);
     location.hash = hash;

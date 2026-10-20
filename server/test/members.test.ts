@@ -275,6 +275,77 @@ describe("deleting", () => {
   });
 });
 
+describe("bulk update", () => {
+  it("sets the same traits on several configs, keeping their other traits", async () => {
+    const a = await createItem(client, { id: "a", name: "A", url: "https://a.example/wms", opacity: 0.2, layers: "a" });
+    const b = await createItem(client, { id: "b", name: "B", shareKeys: ["old-b"], rectangle: { west: 1, south: 2, east: 3, north: 4 } });
+    const other = await createItem(client, { name: "Other" });
+
+    const res = await client.post("/api/items/wms/bulk-update", {
+      ids: [a.id, b.id],
+      set: { url: "https://shared.example/wms", opacity: 0.7, rectangle: { west: 0, south: 0, east: 10, north: 10 } },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.map((m: { name: string; version: number }) => [m.name, m.version]).sort()).toEqual([
+      ["A", 2],
+      ["B", 2],
+    ]);
+
+    const load = async (id: string) => (await client.get(`/api/items/wms/${id}`)).body.item;
+    expect(await load(a.id)).toEqual({
+      id: "a",
+      name: "A",
+      url: "https://shared.example/wms",
+      opacity: 0.7,
+      layers: "a",
+      rectangle: { west: 0, south: 0, east: 10, north: 10 },
+    });
+    expect(await load(b.id)).toEqual({
+      id: "b",
+      name: "B",
+      url: "https://shared.example/wms",
+      opacity: 0.7,
+      rectangle: { west: 0, south: 0, east: 10, north: 10 },
+      shareKeys: ["old-b"],
+    });
+    expect(await load(other.id)).toEqual({ name: "Other" });
+    const { rows } = await pool.query("select updated_by from catalog_member where id = $1", [a.id]);
+    expect(rows[0].updated_by).toBe(email);
+  });
+
+  it("keeps a group's members", async () => {
+    const item = await createItem(client, {});
+    const group = await createGroup(client, { name: "G" }, [item.id]);
+    expect((await client.post("/api/groups/group/bulk-update", { ids: [group.id], set: { isOpen: true } })).status).toBe(200);
+    const loaded = (await client.get(`/api/groups/group/${group.id}`)).body;
+    expect(loaded.item).toEqual({ name: "G", isOpen: true });
+    expect(loaded.members.map((m: { id: string }) => m.id)).toEqual([item.id]);
+  });
+
+  it("refuses unique traits, bad input and other types, changing nothing", async () => {
+    const a = await createItem(client, { name: "A" });
+    const csv = await createItem(client, { name: "C" }, "csv");
+    const post = (body: unknown, type = "wms") => client.post(`/api/items/${type}/bulk-update`, body);
+
+    const unique = await post({ ids: [a.id], set: { id: "same", shareKeys: ["x"] } });
+    expect(unique.status).toBe(400);
+    expect(unique.body.error).toMatch(/"id" and "shareKeys" must be unique/);
+    expect((await post({ ids: [a.id], set: {} })).status).toBe(400);
+    expect((await post({ ids: [], set: { opacity: 1 } })).status).toBe(400);
+    expect((await post({ ids: [a.id], set: { members: [] } })).status).toBe(400);
+    expect((await post({ ids: [a.id], set: { opacity: null } })).status).toBe(400);
+    const blank = await post({ ids: [a.id], set: { name: "" } });
+    expect(blank.status).toBe(400);
+    expect(blank.body.error).toMatch(/^“A”: "name" is required/);
+
+    const mixed = await post({ ids: [a.id, csv.id], set: { opacity: 1 } });
+    expect(mixed.status).toBe(404);
+    expect(mixed.body.error).toContain(csv.id);
+    expect((await post({ ids: [a.id], set: { opacity: 1 } }, "nope")).status).toBe(404);
+    expect((await client.get(`/api/items/wms/${a.id}`)).body).toMatchObject({ version: 1, item: { name: "A" } });
+  });
+});
+
 const ids = (res: { body: { items: { name: string }[] } }) => res.body.items.map((m) => m.name);
 
 describe("member search", () => {

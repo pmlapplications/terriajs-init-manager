@@ -331,6 +331,54 @@ export async function updateConfig(
   });
 }
 
+/** Traits that must differ between members, so can't be set on several at once. */
+export const UNIQUE_TRAITS = ["id", "shareKeys"];
+
+/**
+ * Sets the same traits on several configs of one type, in one transaction:
+ * each key of `set` replaces that trait's whole value, and every other trait
+ * is kept as currently stored. Body { ids, set }.
+ */
+export async function bulkUpdateConfigs(kind: MemberKind, type: string, body: unknown, user: string | null): Promise<ItemConfigSummary[]> {
+  await checkType(kind, type);
+  if (!isPlainObject(body)) throw new ApiError(400, "Expected { ids, set }");
+  const { ids, set } = body;
+  if (!Array.isArray(ids) || !ids.length || !ids.every((id) => typeof id === "string" && UUID.test(id))) {
+    throw new ApiError(400, `"ids" must be a non-empty array of catalog member ids`);
+  }
+  if (!isPlainObject(set) || !Object.keys(set).length) throw new ApiError(400, `"set" must be an object with at least one trait`);
+  const unique = UNIQUE_TRAITS.filter((k) => k in set);
+  if (unique.length) throw new ApiError(400, `${unique.map((k) => `"${k}"`).join(" and ")} must be unique, so can't be set on several configs`);
+  if ("type" in set || "members" in set) throw new ApiError(400, `"type" and "members" can't be set here`);
+  const unset = Object.keys(set).filter((k) => set[k] === undefined || set[k] === null);
+  if (unset.length) throw new ApiError(400, `No value given for ${unset.map((k) => `"${k}"`).join(", ")}`);
+
+  return transaction(async (client) => {
+    const { rows } = await client.query<MemberRow>(`${SELECT_MEMBER} and m.id = any($2::uuid[]) for update of m`, [type, ids]);
+    const found = new Set(rows.map((r) => r.id));
+    const missing = [...new Set(ids as string[])].filter((id) => !found.has(id));
+    if (missing.length) throw new ApiError(404, `No ${type} config with id ${missing.join(", ")}`);
+
+    const updated: ItemConfigSummary[] = [];
+    for (const row of rows) {
+      let f: MemberFields;
+      try {
+        f = toFields(type, { ...toConfig(row).item, ...set });
+      } catch (e) {
+        if (e instanceof ApiError) throw new ApiError(e.status, `“${row.name}”: ${e.message}`);
+        throw e;
+      }
+      await client.query(
+        `update catalog_member set name = $3, description = $4, url = $5, traits = $6, updated_by = $7
+         where id = $1 and type = $2`,
+        [row.id, type, f.name, f.description, f.url, f.traits, user],
+      );
+      updated.push(toSummary((await client.query<MemberRow>(`${SELECT_MEMBER} and m.id = $2`, [type, row.id])).rows[0]));
+    }
+    return updated;
+  });
+}
+
 /**
  * Deletes an item or group. Refused while an init file uses it (see
  * initFilesUsing). Deleting a group removes it from its parent groups and

@@ -3,12 +3,14 @@
 //
 // Routes: #/ lists all stored catalog items and groups, #/new picks a type to
 // create, #/item/<type> and #/group/<type> edit a catalog item or group of that
-// type, #/init-files lists init files, #/init-files/new and #/init-files/<id>
-// edit one, #/users manages users, and #/docs/<page> shows the documentation.
+// type, #/bulk/<type>/<id>,<id>,... sets traits on several configs of a type,
+// #/init-files lists init files, #/init-files/new and #/init-files/<id> edit
+// one, #/users manages users, and #/docs/<page> shows the documentation.
 
 import { useEffect, useState } from "react";
 import { currentUser, loadConfig, logout, UNAUTHORIZED_EVENT, type MemberListEntry, type User } from "./api";
 import App from "./App";
+import { BulkEditPage } from "./BulkEditPage";
 import { CatalogPage } from "./CatalogPage";
 import { DialogHost } from "./DialogHost";
 import { alertDialog, confirmDialog } from "./dialogs";
@@ -18,6 +20,7 @@ import { InitFileEditor } from "./InitFileEditor";
 import { InitFilesPage } from "./InitFilesPage";
 import { LoginPage } from "./LoginPage";
 import { NewPage } from "./NewPage";
+import { parseBulkEditHash } from "./routes";
 import { kindOf, loadModel, type CatalogModel } from "./terria/catalog-ui";
 import { UsersPage } from "./UsersPage";
 import "./App.css";
@@ -26,6 +29,7 @@ type Route =
   | { page: "catalog" }
   | { page: "new" }
   | { page: "item"; type: string }
+  | { page: "bulk"; type: string; ids: string[] }
   | { page: "initFiles" }
   // `visit` changes on every navigation, so each visit to "new" starts afresh.
   | { page: "initFile"; id: string | null; visit: number }
@@ -40,6 +44,8 @@ function currentRoute(): Route {
   const docs = /^#\/docs(?:\/(.*))?$/.exec(location.hash);
   if (docs) return { page: "docs", path: docs[1] ?? "", visit: ++visits };
   if (location.hash === "#/new") return { page: "new" };
+  const bulk = parseBulkEditHash(location.hash);
+  if (bulk) return { page: "bulk", ...bulk };
   if (location.hash === "#/init-files") return { page: "initFiles" };
   const initFile = /^#\/init-files\/([\w-]+)$/.exec(location.hash)?.[1];
   if (initFile) return { page: "initFile", id: initFile === "new" ? null : initFile, visit: ++visits };
@@ -174,7 +180,7 @@ export default function Root() {
         <a href="#/init-files" aria-current={route.page === "initFiles" || route.page === "initFile" ? "page" : undefined}>
           Init files
         </a>
-        <a href="#/" aria-current={route.page === "catalog" || route.page === "new" ? "page" : undefined}>
+        <a href="#/" aria-current={route.page === "catalog" || route.page === "new" || route.page === "bulk" ? "page" : undefined}>
           Catalogue Groups/Items
         </a>
         <a href="#/users" aria-current={route.page === "users" ? "page" : undefined}>
@@ -197,6 +203,8 @@ export default function Root() {
         <DocsPage key={route.visit} page={route.path} />
       ) : route.page === "users" ? (
         <UsersPage currentUser={user} />
+      ) : route.page === "bulk" ? (
+        <BulkEditPage key={location.hash} type={route.type} ids={route.ids} />
       ) : route.page === "catalog" ? (
         <CatalogPage
           draft={hasDraft(editingType) ? { type: editingType, href: editorHash(editingType) } : null}
