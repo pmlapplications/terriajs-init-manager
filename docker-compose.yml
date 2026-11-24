@@ -1,7 +1,13 @@
 # App + PostgreSQL for local testing.
 #
 #   docker compose up --build        app on http://localhost:3000
-#   docker compose up db             database only, for `npm run dev` / `npm run dev:api`
+#
+# The database sits on an internal network that only the app can reach, and
+# publishes no host port, so it cannot clash with other PostgreSQL servers on
+# this machine. To reach it from the host (for `npm run dev` / `npm run dev:api`),
+# add the host-db override, which publishes it on 127.0.0.1:${DB_PORT:-5432}:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.host-db.yml up db
 #
 # db/migrations runs automatically, but only when the data volume is empty.
 # The volume is named so test datasets can be swapped without losing any:
@@ -19,8 +25,8 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./db/migrations:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    networks:
+      - db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 2s
@@ -37,9 +43,17 @@ services:
     volumes:
       # Published and test init files, served at /config.
       - config-data:/app/config
+    networks:
+      - default
+      - db
     depends_on:
       db:
         condition: service_healthy
+
+networks:
+  # Internal: no route to the host or outside world, and only the app joins it.
+  db:
+    internal: true
 
 volumes:
   db-data:

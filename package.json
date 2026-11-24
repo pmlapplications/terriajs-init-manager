@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "db:up": "docker compose -f docker-compose.yml -f docker-compose.host-db.yml up -d db",
     "dev:api": "node --watch --env-file-if-exists=.env server/index.ts",
     "start": "node server/index.ts",
     "user:create": "node --env-file-if-exists=.env server/create-user.ts",

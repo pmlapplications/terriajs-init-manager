@@ -23,7 +23,7 @@ For development (Node.js 22.18+, `nvm use`):
 
 ```bash
 npm install
-docker compose up -d db
+npm run db:up                                      # PostgreSQL on 127.0.0.1:5432
 npm run dev:api & npm run dev                      # http://localhost:5173
 npm test                                           # needs the database running
 ```

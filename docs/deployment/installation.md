@@ -9,12 +9,13 @@ Requirements: Docker with the Compose plugin.
 
 ```bash
 cp .env.example .env              # optional; the defaults match it
-docker compose up --build         # app on http://localhost:3000, PostgreSQL on port 5432
+docker compose up --build         # app on http://localhost:3000
 ```
 
 This starts two containers:
 
-- `db`: PostgreSQL 17. The schema in `db/migrations/` is created automatically the first time,
+- `db`: PostgreSQL 17, on an internal network that only `app` can reach. It publishes no host
+  port, so it does not clash with other PostgreSQL servers on the machine. The schema in `db/migrations/` is created automatically the first time,
   when the data volume is empty.
 - `app`: the frontend and API on port 3000 (`APP_PORT`).
 

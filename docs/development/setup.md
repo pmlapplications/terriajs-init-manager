@@ -5,11 +5,16 @@ Requirements: Node.js 22.18 or later (`nvm use` picks up `.nvmrc`) and Docker, f
 ```bash
 npm install
 cp .env.example .env       # optional; the defaults match it
-docker compose up -d db    # PostgreSQL only
+npm run db:up              # PostgreSQL only, on 127.0.0.1:5432 (DB_PORT)
 npm run dev:api            # API server on http://localhost:3000, restarts on changes
 npm run dev                # frontend on http://localhost:5173, forwarding /api and /config
 npm run user:create        # create a user to log in with
 ```
+
+`npm run db:up` adds `docker-compose.host-db.yml`, which publishes the database to the host. Plain
+`docker compose up` keeps it on an internal network that only the app container can reach. If
+another PostgreSQL server already uses port 5432, set `DB_PORT` and change the port in
+`DATABASE_URL` and `TEST_DATABASE_URL` to match.
 
 Open <http://localhost:5173>. The Vite dev server reloads the frontend as you edit; the API server
 restarts when a server file changes.

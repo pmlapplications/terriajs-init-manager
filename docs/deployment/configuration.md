@@ -19,7 +19,7 @@ them from a `.env` file in the repository root; copy `.env.example` to start one
 | Variable | Default | |
 |---|---|---|
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | `terria` | Database name and credentials. |
-| `DB_PORT` | `5432` | Host port for PostgreSQL. |
+| `DB_PORT` | `5432` | Host port for PostgreSQL, when published with `docker-compose.host-db.yml` (`npm run db:up`). Bound to 127.0.0.1. |
 | `APP_PORT` | `3000` | Host port for the app. |
 | `DB_VOLUME` | `terriajs-init-manager-db` | Volume holding the database. Change it to switch datasets. |
 | `CONFIG_VOLUME` | `terriajs-init-manager-config` | Volume holding published init files. |

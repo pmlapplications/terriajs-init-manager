@@ -19,7 +19,7 @@ npx vitest run src/api.test.ts   # one file
 
 ## The test database
 
-The API tests need PostgreSQL. Locally, `docker compose up -d db` is enough: the tests create a
+The API tests need PostgreSQL. Locally, `npm run db:up` is enough: the tests create a
 `terria_test` database next to the app's own, then drop its `terria` schema and run every
 migration in `db/migrations/` before each run, so each run starts from a fresh install.
 

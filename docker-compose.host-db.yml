@@ -1,0 +1,16 @@
+# Publishes the database to the host, for `npm run dev` / `npm run dev:api`:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.host-db.yml up db
+#
+# Bound to 127.0.0.1 only. Set DB_PORT if 5432 is already used by another server
+# (and change DATABASE_URL / TEST_DATABASE_URL to match).
+
+services:
+  db:
+    # Ports cannot be published from an internal-only network, so also join the
+    # project's default network.
+    networks:
+      - db
+      - default
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
